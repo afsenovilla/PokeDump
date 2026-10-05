@@ -10,7 +10,7 @@ export class ExtractError extends Error {
 }
 
 const GAMES = { BPR: 'Rojo Fuego (FireRed)', BPG: 'Verde Hoja (LeafGreen)' };
-const LANGS = { J: 'japonés', E: 'inglés', F: 'francés', D: 'alemán', I: 'italiano', S: 'español' };
+const LANGS = { J: 'japonés', E: 'inglés', F: 'francés', D: 'alemán', I: 'italiano', S: 'español', K: 'coreano' };
 
 const u32 = (b, at) => (b[at] | (b[at + 1] << 8) | (b[at + 2] << 16) | (b[at + 3] << 24)) >>> 0;
 const u64 = (b, at) => Number(new DataView(b.buffer, b.byteOffset + at, 8).getBigUint64(0, true));

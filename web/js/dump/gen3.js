@@ -188,7 +188,10 @@ export function parseBoxes(storage) {
 }
 
 const GAMES = { BPR: 'firered', BPG: 'leafgreen' };
-const LANGUAGES = { J: 'ja', E: 'en', F: 'fr', D: 'de', I: 'it', S: 'es' };
+const LANGUAGES = { J: 'ja', E: 'en', F: 'fr', D: 'de', I: 'it', S: 'es', K: 'ko' };
+// Idiomas con el juego de caracteres occidental (el que decodifica decodeText). En ja/ko los
+// nombres no se pueden leer con él; el resto del volcado (Pokédex, especies, niveles) no depende de ello.
+const WESTERN = new Set(['en', 'fr', 'de', 'it', 'es']);
 
 // header: { gameCode: 'BPRS', revision: 10 } de la cabecera de la sonda. blocks: { sb2, sb1, storage? }.
 export function buildReport(blocks, header = {}, { source = 'ram', dumpedAt = new Date().toISOString() } = {}) {
@@ -204,8 +207,13 @@ export function buildReport(blocks, header = {}, { source = 'ram', dumpedAt = ne
         dex: parseDex(blocks.sb2),
         party: parseParty(blocks.sb1),
     };
+    const warnings = [];
+    if (report.game.language && !WESTERN.has(report.game.language)) {
+        warnings.push(`Idioma «${report.game.language}»: los nombres (entrenador y motes) usan otro juego de caracteres y pueden salir con «?».`);
+    }
     if (blocks.storage) report.boxes = parseBoxes(blocks.storage).filter((b) => b.mons.length).flatMap((b) => b.mons);
-    else report.warnings = ['No se obtuvo el almacenamiento del PC: faltan las cajas.'];
+    else warnings.push('No se obtuvo el almacenamiento del PC: faltan las cajas.');
+    if (warnings.length) report.warnings = warnings;
     return report;
 }
 

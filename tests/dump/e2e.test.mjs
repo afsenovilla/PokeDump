@@ -104,3 +104,20 @@ test('sonda: una sola pasada, solo cabecera', opts, async () => {
         assert.equal(result.header.gameCode, 'BPRS');
     } finally { runner.close(); }
 });
+
+// Todos los idiomas de FireRed y LeafGreen: el payload y la web no dependen del idioma.
+for (const code of ['BPRE', 'BPRF', 'BPRD', 'BPRI', 'BPRS', 'BPGE', 'BPGF', 'BPGD', 'BPGI', 'BPGS', 'BPRJ', 'BPGJ']) {
+    test(`volcado completo con ${code}`, opts, async () => {
+        const blocks = makeBlocks();
+        const { runner, server } = await session({ blocks, init: { gameCode: code }, game: { code } });
+        try {
+            const result = await server.run();
+            assert.equal(result.outcome, 'backed-up');
+            assert.equal(result.report.game.code, code);
+            assert.equal(result.report.game.title, code.startsWith('BPR') ? 'firered' : 'leafgreen');
+            assert.deepEqual(result.save, buildSav(blocks));
+            const japanese = code.endsWith('J');
+            assert.equal(!!result.report.warnings, japanese);
+        } finally { runner.close(); }
+    });
+}
