@@ -75,6 +75,11 @@ function show({ report, game }) {
     $('r-rev').textContent = `0x${report.revision.toString(16).padStart(2, '0')} (${report.revision})`;
     $('r-size').textContent = size(report.size);
     $('r-sha1').textContent = report.sha1;
+    const pools = report.rom_facts?.client_pool ?? [];
+    const good = pools.filter((p) => p.cmp_r0_1_before_pool);
+    $('r-pool').textContent = good.length
+        ? `✓ encontrado (${good.length}): puntero del PC en 0x${good[0].storage_ptr_address_guess.toString(16)}`
+        : pools.length ? '⚠ patrón parecido, sin confirmar' : '✗ no encontrado';
     $('advice').textContent = ok
         ? 'Pulsa «Copiar informe» y pégalo en el chat. Con eso basta para saber qué direcciones de memoria usa tu juego.'
         : 'La extracción no dio una ROM de GBA correcta. Copia el informe y cuéntalo.';

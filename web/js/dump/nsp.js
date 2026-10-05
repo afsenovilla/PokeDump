@@ -165,6 +165,35 @@ export function describeGame(info) {
     return { game, language: lang, text: `${game}, ${lang}, código ${info.game_code}, revisión 0x${info.revision.toString(16).padStart(2, '0')}` };
 }
 
+const ROM_BASE = 0x08000000;
+const DECOMP_BUFFER = 0x0201c000;
+
+// Busca en la ROM el pool de literales de Client_RunBufferScript que usa el payload de PokeDump:
+// [gDecompressionBuffer, &gSaveBlockXPtr, &gSaveBlockYPtr] (dos punteros de IWRAM contiguos), con el
+// `cmp r0, #1` (0x2801) 0x14 bytes antes, justo antes de la dirección de retorno del `bl`.
+// No hace falta que el resultado sea único: es un diagnóstico para comprobar las suposiciones.
+export function findClientPool(rom) {
+    const words = new Uint32Array(rom.buffer, rom.byteOffset, rom.length >> 2);
+    const inIwram = (w) => w >= 0x03000000 && w < 0x03008000;
+    const refs = (value) => { let n = 0; for (let i = 0; i < words.length; i++) if (words[i] === value) n++; return n; };
+    const found = [];
+    for (let i = 0; i + 2 < words.length; i++) {
+        if (words[i] !== DECOMP_BUFFER) continue;
+        const a = words[i + 1], b = words[i + 2];
+        if (!inIwram(a) || !inIwram(b) || Math.abs(a - b) !== 4) continue;
+        const at = i * 4;
+        const storage = Math.max(a, b) + 4;
+        found.push({
+            rom_address: ROM_BASE + at,
+            pointer_addresses: [a, b],
+            storage_ptr_address_guess: storage,
+            storage_ptr_rom_references: refs(storage),
+            cmp_r0_1_before_pool: at >= 0x14 && (rom[at - 0x14] | (rom[at - 0x13] << 8)) === 0x2801,
+        });
+    }
+    return found;
+}
+
 async function sha1(bytes) {
     return hex(new Uint8Array(await crypto.subtle.digest('SHA-1', bytes)));
 }
@@ -194,7 +223,7 @@ export async function extractRom(file, keysText, onProgress = () => {}) {
                     onProgress(`Extrayendo ${f.path} (${(f.size / 1048576).toFixed(1)} MB)…`);
                     const rom = await fs.reader.read(fs.base + fs.dataOffset + f.offset, f.size);
                     const info = checkGbaHeader(rom);
-                    const report = { romfs_path: f.path, size: rom.length, sha1: await sha1(rom), ...info };
+                    const report = { romfs_path: f.path, size: rom.length, sha1: await sha1(rom), ...info, rom_facts: { client_pool: findClientPool(rom) } };
                     return { rom, report, game: describeGame(info), fileName: f.path.split('/').pop() };
                 }
             }
