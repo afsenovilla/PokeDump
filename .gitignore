@@ -1,0 +1,12 @@
+# Nunca subir contenido protegido ni datos personales
+*.nsp
+*.nsz
+*.xci
+*.gba
+*.sav
+prod.keys
+title.keys
+*.keys
+informe.json
+__pycache__/
+.pytest_cache/
