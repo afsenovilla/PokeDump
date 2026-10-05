@@ -1,0 +1,79 @@
+{
+  "bridge": {
+    "version": "2.1.4",
+    "chips": {
+      "ESP32-S3": {
+        "tested": true,
+        "parts": [
+          {
+            "address": 0,
+            "path": "bridge/esp32-s3/bootloader.bin"
+          },
+          {
+            "address": 32768,
+            "path": "bridge/esp32-s3/partition-table.bin"
+          },
+          {
+            "address": 65536,
+            "path": "bridge/esp32-s3/ldn_bridge_esp32s3.bin"
+          }
+        ]
+      },
+      "ESP32-C6": {
+        "tested": false,
+        "parts": [
+          {
+            "address": 0,
+            "path": "bridge/esp32-c6/bootloader.bin"
+          },
+          {
+            "address": 32768,
+            "path": "bridge/esp32-c6/partition-table.bin"
+          },
+          {
+            "address": 65536,
+            "path": "bridge/esp32-c6/ldn_bridge_esp32c6.bin"
+          }
+        ]
+      },
+      "ESP32-C3": {
+        "tested": false,
+        "parts": [
+          {
+            "address": 0,
+            "path": "bridge/esp32-c3/bootloader.bin"
+          },
+          {
+            "address": 32768,
+            "path": "bridge/esp32-c3/partition-table.bin"
+          },
+          {
+            "address": 65536,
+            "path": "bridge/esp32-c3/ldn_bridge_esp32c3.bin"
+          }
+        ]
+      },
+      "ESP32": {
+        "tested": false,
+        "parts": [
+          {
+            "address": 4096,
+            "path": "bridge/esp32/bootloader.bin"
+          },
+          {
+            "address": 32768,
+            "path": "bridge/esp32/partition-table.bin"
+          },
+          {
+            "address": 65536,
+            "path": "bridge/esp32/ldn_bridge_esp32.bin"
+          }
+        ]
+      }
+    }
+  },
+  "adapter": {
+    "version": "2.2.7",
+    "path": "adapter/gblink-wireless-2.2.7.uf2"
+  }
+}

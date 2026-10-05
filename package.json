@@ -1,0 +1,6 @@
+{
+  "name": "pokedump",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test tests/dump/*.test.mjs && python3 -m pytest tests -q" }
+}
