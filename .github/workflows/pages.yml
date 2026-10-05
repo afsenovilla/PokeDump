@@ -2,7 +2,7 @@
 name: Pages
 on:
   push:
-    branches: [main]
+    branches: [main, claude/pokemon-frlg-save-dump-mvp-y3f6ow]
     paths: ['web/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 permissions:

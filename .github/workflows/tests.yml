@@ -9,7 +9,7 @@ jobs:
         with: { node-version: 22 }
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
-      - run: sudo apt-get update && sudo apt-get install -y binutils-arm-none-eabi
+      - run: sudo apt-get update && sudo apt-get install -y binutils-arm-none-eabi libmgba0.10t64
       - run: pip install -r requirements.txt mgba
       - run: ./payload/build.sh
       - run: npm test
