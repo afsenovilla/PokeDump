@@ -10,7 +10,7 @@
 import {
     CLI, CLIENT_SCRIPTS, MG_LINK, MysteryGiftError, WonderCardServer, clientScript, parseGameData,
 } from '../gift/mystery-gift.js';
-import { describeSave } from '../gift/save-backup.js';
+import { describeSave } from '../gift/save-check.js';
 import { RAMDUMP_PAYLOAD_BASE64 } from './ramdump-payload.js';
 import { SB1_SIZE, SB2_SIZE, ST_SIZE, buildReport, buildSav, encodeText } from './gen3.js';
 

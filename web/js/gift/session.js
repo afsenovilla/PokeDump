@@ -6,11 +6,8 @@
 // against the Switch.
 
 import { leaderBeacon } from '../cable/leader.js';
-import { MG_LINK, MysteryGiftError, WonderCardServer } from './mystery-gift.js';
-import { SaveBackupServer } from './save-backup.js';
-import { SaveRestoreServer } from './save-restore.js';
+import { MG_LINK, MysteryGiftError } from './mystery-gift.js';
 import { RamDumpServer } from '../dump/ramdump.js';
-import { eventPayload } from './events.js';
 
 const ACTIVITY_WONDER_CARD = 21;
 // English FireRed, able to link nationally, with the National Pokédex and the game cleared.
@@ -323,17 +320,14 @@ export class GiftSession {
     startServer() {
         const link = this.link;
         link.stage = 'gift';
-        const Server = link.event?.dump ? RamDumpServer : { backup: SaveBackupServer, restore: SaveRestoreServer }[link.event?.kind] ?? WonderCardServer;
+        const Server = RamDumpServer;
         const server = link.server = new Server({
-            save: link.event?.save,
             probe: link.event?.probe,
             link: {
                 sendBlock: (data, ident, sent = null) => {
                     if (this.link === link) this.queueBlock(data, ident === MG_LINK.RAM_SCRIPT ? RAM_SCRIPT_REPEAT : BLOCK_REPEAT, sent);
                 },
             },
-            payload: (game) => eventPayload(link.event, game),
-            confirm: (reasons, game) => this.ask(reasons, game),
             log: this.log,
         });
         server.onStage = (stage, detail) => this.status(stage, { detail });

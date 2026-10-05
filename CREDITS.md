@@ -4,10 +4,11 @@ PokeDump es **AGPL-3.0** (ver `LICENSE`) porque reutiliza código AGPL/GPL de:
 
 - **GB-Link Switch LDN** — <https://github.com/GB-Link/GB-Link-Switch-LDN> (AGPL-3.0; las tarjetas y el
   código de Mystery Gift de `web/js/gift/`, GPL-3.0, vienen de
-  [gblink-wondercards](https://github.com/GB-Link/gblink-wondercards)). `web/` es una copia de su
-  sitio (commit `0d90534`) más los cambios de PokeDump: `web/js/dump/`, y pequeñas modificaciones
-  en `web/js/app.js`, `web/js/gift/session.js` y `web/js/gift/events.js`. Incluye el firmware
-  precompilado del ESP32 sin cambios. El código LDN del firmware es GPL-3.0 (`licenses/`).
+  [gblink-wondercards](https://github.com/GB-Link/gblink-wondercards)). `web/` parte de su
+  sitio (commit `0d90534`), recortado a lo que necesita PokeDump (conexión con la placa, instalación del
+  firmware, enlace de Mystery Gift) y con una página nueva en español (`index.html`, `js/pokedump.js`,
+  adaptada de su `app.js`). Se han eliminado los intercambios, Celio, GBA, tarjetas y la restauración de
+  partidas. Incluye el firmware precompilado del ESP32 sin cambios. El código LDN del firmware es GPL-3.0 (`licenses/`).
   El firmware parte de [easyworld/frlg-ldn-trade-esp32](https://github.com/easyworld/frlg-ldn-trade-esp32)
   y [tornadus/frlg-ldn-trade](https://github.com/tornadus/frlg-ldn-trade).
 - **pokeldn** (Warnster / Decryptu) — <https://github.com/Warnster/pokeldn> (AGPL-3.0): la idea y la

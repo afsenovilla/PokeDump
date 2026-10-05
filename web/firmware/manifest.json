@@ -71,9 +71,5 @@
         ]
       }
     }
-  },
-  "adapter": {
-    "version": "2.2.7",
-    "path": "adapter/gblink-wireless-2.2.7.uf2"
   }
 }

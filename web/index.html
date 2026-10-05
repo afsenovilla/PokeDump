@@ -1,434 +1,90 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GB-Link Switch LDN</title>
-    <meta name="description" content="Trade and battle with Pokémon FireRed and LeafGreen on the Nintendo Switch: from a real Game Boy Advance, from this page, or online with Celio. This page also sends it Mystery Gift Wonder Cards.">
-    <link rel="icon" href="favicon.ico">
-    <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PokeDump · Volcar mi partida</title>
+<meta name="description" content="Copia en solo lectura tu partida de Pokémon Rojo Fuego / Verde Hoja de Switch a un .sav (PKHeX) y a un JSON, con un ESP32-S3.">
+<link rel="icon" href="favicon.ico">
+<link rel="stylesheet" href="pokedump.css">
 </head>
 <body>
-    <header class="masthead">
-        <div class="masthead-row">
-            <h1>GB-Link Switch LDN</h1>
-            <nav class="site-links" aria-label="GB-Link links">
-                <a href="https://gblink.io">gblink.io</a>
-                <a href="https://github.com/GB-Link/GB-Link-Switch-LDN">GitHub</a>
-            </nav>
-        </div>
-        <p>Trade and battle with Pokémon FireRed and LeafGreen on the Nintendo Switch: from a real Game Boy Advance, from this page, or online with Celio. This page also sends it Mystery Gift Wonder Cards.</p>
-    </header>
+<main>
+  <h1>PokeDump</h1>
+  <p class="sub">Copia <strong>en solo lectura</strong> tu partida de Pokémon Rojo Fuego / Verde Hoja de Switch a un
+     <code>.sav</code> (PKHeX) y a un <code>.json</code> (Poketracker). No se modifica ni se guarda nada en la consola.</p>
+  <nav class="top">
+    <a href="extraer.html">Comprobar mi juego (NSP)</a>
+    <a href="https://github.com/afsenovilla/PokeDump/blob/HEAD/docs/GUIA_PRUEBA.md">Guía paso a paso</a>
+    <a href="https://github.com/afsenovilla/PokeDump">Código</a>
+  </nav>
 
-    <main>
-        <p class="notice"><strong>¿Quieres volcar tu partida?</strong> <a href="inicio.html">Guía en español de PokeDump</a> · <a href="extraer.html">Comprobar mi juego</a>. Elige «PokeDump» en el paso <em>Mystery Gift</em>.</p>
-        <p id="unsupported" class="notice notice-error" hidden></p>
+  <p class="notice" id="unsupported" hidden></p>
 
-        <nav class="paths" id="paths" role="tablist" aria-label="What links with the Switch">
-            <button class="path" type="button" role="tab" id="path-gba" data-path="gba" aria-selected="true">
-                <strong>Game Boy Advance</strong>
-                <span>Your Game Boy Advance trades and battles with the Switch. Ruby, Sapphire, Emerald, FireRed, LeafGreen.</span>
-                <span class="needs">ESP32 + GB-Link</span>
-            </button>
-            <button class="path" type="button" role="tab" id="path-switch" data-path="switch" aria-selected="false">
-                <strong>Trade from this page</strong>
-                <span>The Switch trades with this page: Wonder Trade, or your own .pk3 files.</span>
-                <span class="needs">ESP32</span>
-            </button>
-            <button class="path" type="button" role="tab" id="path-celio" data-path="celio" aria-selected="false">
-                <strong>Online with Celio</strong>
-                <span>The Switch trades and battles over the internet with another player: a Game Boy Advance or an emulator at celio.gblink.io, or another Switch.</span>
-                <span class="needs">ESP32</span>
-            </button>
-            <button class="path" type="button" role="tab" id="path-gift" data-path="gift" aria-selected="false">
-                <strong>Mystery Gift</strong>
-                <span>Wonder Cards for the Switch from this page: event distributions and the GB-Link Team's cards.</span>
-                <span class="needs">ESP32</span>
-            </button>
-        </nav>
+  <section class="card" id="esp-card">
+    <h2><span class="n">1</span> Placa ESP32-S3 <span class="dot" id="esp-dot"></span></h2>
+    <p class="status" id="esp-status" aria-live="polite"></p>
+    <p class="hint" id="esp-hint"></p>
+    <div class="progress" id="esp-progress" hidden><div></div></div>
+    <div class="row" id="esp-actions">
+      <button id="esp-primary"></button>
+      <button class="quiet" id="esp-secondary" hidden></button>
+    </div>
+    <label class="drop" id="keys-drop" hidden>
+      <input type="file" id="keys-file" accept=".keys,.txt,text/plain">
+      <strong>Suelta aquí tu <code>prod.keys</code></strong>
+      <span>o haz clic para elegirlo. Solo 4 claves viajan por USB a la placa; nada se sube.</span>
+    </label>
+    <p class="status" id="keys-status"></p>
+    <details id="esp-more" hidden>
+      <summary>Más opciones</summary>
+      <p class="fine" id="esp-facts"></p>
+      <div class="row">
+        <button class="quiet" id="esp-reinstall">Reinstalar el firmware</button>
+        <button class="quiet" id="keys-replace">Cambiar las claves</button>
+        <button class="quiet" id="keys-erase">Borrar las claves</button>
+        <button class="quiet" id="esp-disconnect">Desconectar</button>
+      </div>
+    </details>
+  </section>
 
-        <section class="card" id="esp-card" aria-labelledby="esp-title">
-            <div class="card-head">
-                <span class="step">1</span>
-                <div>
-                    <h2 id="esp-title">ESP32 board</h2>
-                    <p class="sub">Joins the Switch's wireless. ESP32-S3, C6, C3 or the original ESP32.</p>
-                </div>
-                <span class="dot" id="esp-dot"></span>
-            </div>
-            <p class="status" id="esp-status" aria-live="polite"></p>
-            <p class="hint" id="esp-hint"></p>
-            <div class="progress" id="esp-progress" hidden><div class="bar"></div></div>
-            <div class="actions" id="esp-actions">
-                <button class="primary" id="esp-primary"></button>
-                <button class="quiet" id="esp-secondary" hidden></button>
-            </div>
+  <section class="card" id="dump-card">
+    <h2><span class="n">2</span> Volcar la partida <span class="dot" id="dump-dot"></span></h2>
+    <div class="choices" id="modes">
+      <label class="choice"><input type="radio" name="mode" value="ram-probe" checked>
+        <div><b>Sonda (haz esto primero)</b><span>Una sola pasada: comprueba juego, idioma y punteros. No copia nada.</span></div></label>
+      <label class="choice"><input type="radio" name="mode" value="ram-dump">
+        <div><b>Volcado completo</b><span>Equipo, cajas, Pokédex y entrenador, leídos de la RAM. Dura unos minutos.</span></div></label>
+    </div>
+    <div class="row"><button id="start">Empezar</button><button class="quiet" id="stop" hidden>Parar</button></div>
+    <p class="status" id="dump-status" aria-live="polite"></p>
+    <p class="hint" id="dump-hint"></p>
+    <div class="progress" id="dump-progress" hidden><div></div></div>
+    <ol class="steps">
+      <li>Pulsa <b>Empezar</b> aquí.</li>
+      <li>En la Switch, en el menú principal del juego: <b>MYSTERY GIFT → WONDER CARDS → FRIEND</b> y elige <b>GBLINK</b>.</li>
+      <li>Mantén esta pestaña <b>visible</b> y la Switch cerca de la placa.</li>
+    </ol>
+  </section>
 
-            <div class="panel" id="keys-panel" hidden>
-                <label class="drop" id="keys-drop">
-                    <input type="file" id="keys-file" accept=".keys,.txt,text/plain">
-                    <strong>Drop your <code>prod.keys</code> here</strong>
-                    <span>or click to choose the file</span>
-                </label>
-                <p class="status" id="keys-status" aria-live="polite"></p>
-                <p class="fine">The Switch's wireless is encrypted with keys from the console. Four of them go from this file to the board over USB. Nothing is uploaded.</p>
-            </div>
+  <section class="card" id="result-card" hidden>
+    <h2><span class="n">3</span> Resultado</h2>
+    <p class="status good" id="result-headline"></p>
+    <dl class="facts" id="result-facts"></dl>
+    <div class="downloads" id="downloads"></div>
+    <p class="fine" id="result-note"></p>
+  </section>
 
-            <details class="more" id="esp-details" hidden>
-                <summary>Details</summary>
-                <dl class="facts">
-                    <div><dt>Chip</dt><dd id="esp-chip">–</dd></div>
-                    <div><dt>Firmware</dt><dd id="esp-version">–</dd></div>
-                    <div><dt>Console</dt><dd id="esp-transport">–</dd></div>
-                    <div><dt>Switch’s room</dt><dd id="esp-signal">–</dd></div>
-                </dl>
-            </details>
-            <details class="more" id="esp-more" hidden>
-                <summary>More options</summary>
-                <div class="actions">
-                    <button id="esp-reinstall">Install the firmware again</button>
-                    <button id="esp-wipe">Erase everything and install</button>
-                    <button id="keys-replace">Replace the keys</button>
-                    <button id="keys-erase">Erase the keys</button>
-                    <button id="esp-disconnect">Disconnect</button>
-                </div>
-                <p class="fine">Installing again keeps the stored keys. Erasing everything does not.</p>
-            </details>
-        </section>
+  <details>
+    <summary>Registro (para pedir ayuda)</summary>
+    <pre id="log"></pre>
+    <div class="row"><button class="quiet" id="copy-log">Copiar el registro</button></div>
+  </details>
 
-        <section class="card" id="adapter-card" data-path="gba" aria-labelledby="adapter-title">
-            <div class="card-head">
-                <span class="step">2</span>
-                <div>
-                    <h2 id="adapter-title">GB-Link adapter</h2>
-                    <p class="sub">Plugs into the Game Boy Advance in place of a Wireless Adapter, with a Game Boy Color link cable. A Game Boy Advance cable does not work here.</p>
-                </div>
-                <span class="dot" id="adapter-dot"></span>
-            </div>
-            <p class="status" id="adapter-status" aria-live="polite"></p>
-            <p class="hint" id="adapter-hint"></p>
-            <ol class="steps" id="adapter-steps" hidden>
-                <li data-step="restart"><span id="adapter-step-restart">Put the adapter in update mode</span></li>
-                <li data-step="choose">Let the browser use it: click the button and pick <strong>RP2 Boot</strong>
-                    <div class="actions"><button class="primary" id="adapter-select">Choose “RP2 Boot”</button></div></li>
-                <li data-step="write">Write the firmware
-                    <div class="progress" id="adapter-progress"><div class="bar"></div></div></li>
-                <li data-step="reconnect">Reconnect</li>
-            </ol>
-            <div class="actions" id="adapter-actions">
-                <button class="primary" id="adapter-primary"></button>
-                <button class="quiet" id="adapter-secondary" hidden></button>
-            </div>
-
-            <details class="more" id="adapter-details" hidden>
-                <summary>Details</summary>
-                <dl class="facts">
-                    <div><dt>Firmware</dt><dd id="adapter-version">–</dd></div>
-                    <div><dt>Wireless adapter mode</dt><dd id="adapter-wireless">–</dd></div>
-                    <div><dt>Connected over</dt><dd id="adapter-kind">–</dd></div>
-                </dl>
-            </details>
-            <details class="more" id="adapter-more">
-                <summary>More options</summary>
-                <div class="actions">
-                    <button id="adapter-reinstall">Install the firmware again</button>
-                    <button id="adapter-connect-serial">Connect over serial instead</button>
-                    <button id="adapter-disconnect">Disconnect</button>
-                </div>
-                <p class="fine">Install a <code>.uf2</code> of your own: <input type="file" id="adapter-file" accept=".uf2"> <button class="quiet" id="adapter-file-clear" hidden>Back to the bundled firmware</button></p>
-                <p class="status" id="adapter-file-status" aria-live="polite"></p>
-                <p class="fine">By hand: hold BOOTSEL while plugging the adapter in, then copy <a id="adapter-download" href="#" download>the firmware file</a> onto the <code>RPI-RP2</code> drive that appears. <button class="quiet" id="adapter-bootsel" hidden>Restart the adapter in update mode</button></p>
-            </details>
-        </section>
-
-        <section class="card" id="play-card" data-path="gba" aria-labelledby="play-title">
-            <div class="card-head">
-                <span class="step">3</span>
-                <div>
-                    <h2 id="play-title">Play</h2>
-                    <p class="sub" id="play-sub">Let this page carry the link, or connect the two boards with three wires.</p>
-                </div>
-                <span class="dot" id="play-dot"></span>
-            </div>
-
-            <div class="switcher" id="play-game" role="group" aria-label="The game on the Game Boy Advance">
-                <button type="button" data-game="wireless" aria-pressed="true">FireRed, LeafGreen, Emerald</button>
-                <button type="button" data-game="cable" aria-pressed="false">Ruby, Sapphire</button>
-            </div>
-            <p class="fine" id="game-note-cable" hidden>Ruby and Sapphire have no wireless. This page links them by cable and turns that link into the Switch's wireless, so both boards stay on USB. Trades and single or double battles, with the Switch leading.</p>
-            <div id="bypass-panel" hidden>
-                <label class="fine check"><input type="checkbox" id="bypass-nationally"> Bypass the National Dex requirement</label>
-                <p class="fine warn" id="bypass-warning" hidden>Trades go ahead whatever either game's progress. Pokémon from Ruby, Sapphire or Emerald may not be tradable out of the Switch's game until it has the National Dex and has finished the Sevii Islands story (Cerulean Cave shows on its town map). Only while this page carries the link, not with the boards wired. FireRed and LeafGreen need no bypass: leave it off for them.</p>
-            </div>
-
-            <div class="session" id="session" hidden>
-                <p class="headline" id="session-headline">–</p>
-                <p class="hint" id="session-hint"></p>
-            </div>
-
-            <div class="choices">
-                <div class="choice">
-                    <h3>Through this computer</h3>
-                    <p>Both boards on USB, this page in between. Keep the tab in view while you play.</p>
-                    <div class="actions">
-                        <button class="primary" id="bridge-start" disabled>Start</button>
-                        <button id="bridge-stop" hidden>Stop</button>
-                    </div>
-                    <p class="status" id="bridge-status" aria-live="polite">Connect both boards first.</p>
-                    <dl class="facts" id="bridge-facts" hidden>
-                        <div><dt>To the adapter</dt><dd id="bridge-out">0 frames</dd></div>
-                        <div><dt>From the adapter</dt><dd id="bridge-in">0 KB</dd></div>
-                        <div><dt>Board restarts followed</dt><dd id="bridge-sessions">0</dd></div>
-                    </dl>
-                </div>
-                <div class="choice" id="play-standalone">
-                    <h3>Standalone</h3>
-                    <p>Three wires between the boards, powered from anything. This page is not needed while you play.</p>
-                    <p class="fine" id="wiring">Connect the board in step 1 to see which of its pins go to the adapter's <strong>GP8</strong> and <strong>GP9</strong>.</p>
-                    <table class="wires" id="wires" hidden>
-                        <thead><tr><th>ESP32 board</th><th>GB-Link adapter</th></tr></thead>
-                        <tbody>
-                            <tr><td id="wire-rx"></td><td>GP8</td></tr>
-                            <tr><td id="wire-tx"></td><td>GP9</td></tr>
-                            <tr><td>GND</td><td>GND</td></tr>
-                        </tbody>
-                    </table>
-                    <div class="actions"><button id="wiring-check" disabled>Check the wiring</button></div>
-                    <p class="status" id="wiring-status" aria-live="polite"></p>
-                </div>
-            </div>
-
-            <details class="more" open>
-                <summary>On the consoles</summary>
-                <ol class="fine" id="consoles-cable" hidden>
-                    <li>Switch: upstairs in a Pokémon Center, Direct Corner, Trade Center or Colosseum (single or double battle), become the leader.</li>
-                    <li>Ruby or Sapphire, with the adapter on the link cable: upstairs in a Pokémon Center, talk to the attendant at the middle counter to trade, or the left one for the same kind of battle.</li>
-                    <li>The page joins the Switch's group once the Game Boy Advance has linked. Accept the join on the Switch, then walk to the trade table, or onto the battle spots, on both consoles.</li>
-                    <li>Leave the room on both consoles when you are done. After that the board restarts and is ready again about ten seconds later.</li>
-                </ol>
-                <ol class="fine" id="consoles-wireless">
-                    <li>Switch: upstairs in a Pokémon Center, Direct Corner, Trade Center or Colosseum, become the leader.</li>
-                    <li>Game Boy Advance, with the adapter on a Game Boy Color cable: pick the same thing and join the group. The Switch shows up after a few seconds.</li>
-                    <li>Or the other way round: become the leader on the Game Boy Advance and join its group on the Switch.</li>
-                    <li>After you leave the room, the board restarts and is ready again about ten seconds later.</li>
-                </ol>
-            </details>
-        </section>
-
-        <section class="card" id="trade-card" data-path="switch" aria-labelledby="trade-title">
-            <div class="card-head">
-                <span class="step">2</span>
-                <div>
-                    <h2 id="trade-title">Trade</h2>
-                    <p class="sub">Trade with the Switch from this page. The board from step 1 is all it takes.</p>
-                </div>
-                <span class="dot" id="trade-dot"></span>
-            </div>
-
-            <div class="switcher" id="trade-source" role="group" aria-label="What to trade with">
-                <button type="button" data-source="pool" aria-pressed="true">Wonder Trade</button>
-                <button type="button" data-source="party" aria-pressed="false">PK3 files</button>
-            </div>
-            <p class="fine" id="source-note-pool">The pool picks the Pokémon you get, and what the Switch gives goes into the pool for the next person. See what is in it at <a href="https://pokemon.gblink.io/pool" target="_blank" rel="noopener">pokemon.gblink.io/pool</a>.</p>
-            <p class="fine" id="source-note-party" hidden>Your own party as <code>.pk3</code> files, kept in this browser. What the Switch sends takes the place of what you gave.</p>
-
-            <p class="status" id="trade-status" aria-live="polite"></p>
-            <p class="hint" id="trade-hint"></p>
-
-            <div class="parties">
-                <div class="party">
-                    <h3 id="their-name">The Switch</h3>
-                    <div class="slots" id="their-slots"></div>
-                </div>
-                <div class="party">
-                    <h3 id="our-name">The pool</h3>
-                    <div class="slots" id="our-slots"></div>
-                    <p class="fine" id="party-note" hidden>Once you are both at the trade table, click a Pokémon to offer it. <span class="glyph">↓</span> saves one as a <code>.pk3</code> file, <span class="glyph">↑</span> replaces it; dropping a file on a slot does the same.</p>
-                    <div class="answers" id="pool-answers" hidden>
-                        <button class="primary" type="button" id="pool-accept" aria-pressed="false">Accept trade</button>
-                        <button type="button" id="pool-cancel" aria-pressed="false">Cancel trade</button>
-                    </div>
-                    <p class="fine" id="pool-note">The pool's Pokémon shows up here once you are both at the trade table. <strong>Accept trade</strong> offers it, before or after you pick yours on the Switch. <strong>Cancel trade</strong> declines it. For a different one, leave the table and sit down again.</p>
-                </div>
-            </div>
-
-            <div class="kept" id="kept" hidden>
-                <h3>Kept here</h3>
-                <p class="fine">The pool did not confirm these trades, so what the Switch gave is kept here. <span class="glyph">↓</span> saves one as a <code>.pk3</code> file.</p>
-                <div class="slots" id="kept-slots"></div>
-            </div>
-
-            <input type="file" id="trade-file" accept=".pk3" hidden>
-
-            <div class="actions">
-                <button class="primary" id="trade-connect">Connect</button>
-                <button id="trade-decline" hidden>Cancel trade</button>
-                <button class="quiet" id="trade-stop" hidden>Disconnect</button>
-            </div>
-
-            <details class="more" open>
-                <summary>On the Switch</summary>
-                <ol class="fine">
-                    <li>Upstairs in a Pokémon Center, Direct Corner, Trade Center, become the leader.</li>
-                    <li>Press Connect here, then accept the join on the Switch.</li>
-                    <li>Sit down at the trade table.</li>
-                    <li>CANCEL at the table takes you back to the room; sit down again for another trade. Leaving the room ends the visit.</li>
-                </ol>
-            </details>
-            <details class="more">
-                <summary>More options</summary>
-                <div class="actions" id="party-options" hidden>
-                    <button class="quiet" id="trade-clear">Empty the chosen slot</button>
-                    <button class="quiet" id="trade-reset">Set default party</button>
-                </div>
-                <p class="fine" id="pool-options"><label for="pool-server">Trade pool server</label> <input type="text" id="pool-server" spellcheck="false" autocomplete="off"> <button class="quiet" id="pool-server-reset" hidden>Back to the usual one</button></p>
-                <p class="fine" id="party-board" hidden>Keep the tab in view while you trade: a hidden tab runs too slowly for the game.</p>
-                <p class="fine" id="party-fine" hidden>A Pokémon that arrives takes the slot of the one that left. Offer it again to trade it straight back.</p>
-            </details>
-        </section>
-
-        <section class="card" id="celio-card" data-path="celio" aria-labelledby="celio-title">
-            <div class="card-head">
-                <span class="step">2</span>
-                <div>
-                    <h2 id="celio-title">Online with Celio</h2>
-                    <p class="sub">Game Boy Advance and emulator players connect at <a href="https://celio.gblink.io/" target="_blank" rel="noopener">celio.gblink.io</a>; another Switch player uses this page.</p>
-                </div>
-                <span class="dot" id="celio-dot"></span>
-            </div>
-
-            <div id="celio-start">
-                <div class="actions celio-join">
-                    <button class="primary" id="celio-create">Create session</button>
-                    <span class="fine">or</span>
-                    <input type="text" id="celio-code" placeholder="Session Id" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
-                    <button id="celio-join" disabled>Join</button>
-                </div>
-            </div>
-
-            <div id="celio-in" hidden>
-                <p class="celio-id">Session <code id="celio-id"></code> <button class="quiet" id="celio-copy">Copy</button></p>
-                <p class="status" id="celio-partner">Waiting for the other player…</p>
-                <div class="actions">
-                    <button class="primary" id="celio-link" disabled>Start</button>
-                    <button id="celio-leave">Leave session</button>
-                </div>
-            </div>
-
-            <p class="status" id="celio-note" aria-live="polite"></p>
-
-            <div class="session" id="celio-session" hidden>
-                <p class="headline" id="celio-headline">–</p>
-                <p class="hint" id="celio-hint"></p>
-                <div class="actions" id="celio-rooms" hidden>
-                    <button type="button" data-activity="4">Trade Center</button>
-                    <button type="button" data-activity="1">Single battle</button>
-                    <button type="button" data-activity="2">Double battle</button>
-                </div>
-            </div>
-
-            <details class="more" open>
-                <summary>How it works</summary>
-                <ol class="fine">
-                    <li>Create a session and send its Session Id to the other player, or join theirs. On a Game Boy Advance with a GB-Link, or in an emulator, they use <a href="https://celio.gblink.io/" target="_blank" rel="noopener">celio.gblink.io</a>. Both press Start.</li>
-                    <li>The Celio server decides which side leads. The page then says whether to lead a group on the Switch or to join the group it opens, and in that case asks which room.</li>
-                    <li>On the Switch: upstairs in a Pokémon Center, the Direct Corner, then the Trade Center or the Colosseum. The other player goes to the same room.</li>
-                    <li>Leaving the room on both consoles ends the session. Keep this tab in view while you play.</li>
-                </ol>
-            </details>
-            <details class="more">
-                <summary>Options: National Dex bypass, Celio server</summary>
-                <label class="fine check"><input type="checkbox" id="celio-bypass"> Bypass the National Dex requirement</label>
-                <p class="fine warn" id="celio-bypass-warning" hidden>Trades go ahead whatever either game's progress. Pokémon from Ruby, Sapphire or Emerald may not be tradable out of the Switch's game until it has the National Dex and has finished the Sevii Islands story (Cerulean Cave shows on its town map).</p>
-                <p class="fine"><label for="celio-server">Celio server</label> <input type="text" id="celio-server" spellcheck="false" autocomplete="off"> <button class="quiet" id="celio-server-reset" hidden>Back to the usual one</button></p>
-            </details>
-        </section>
-
-        <section class="card" id="gift-card" data-path="gift" aria-labelledby="gift-title">
-            <div class="card-head">
-                <span class="step">2</span>
-                <div>
-                    <h2 id="gift-title">Mystery Gift</h2>
-                    <p class="sub">Send Wonder Cards to the Switch from this page. The board from step 1 is all it takes.</p>
-                </div>
-                <span class="dot" id="gift-dot"></span>
-            </div>
-
-            <p class="gift-pick"><label for="gift-event">Wonder Card</label> <select id="gift-event"></select></p>
-
-            <details class="more" id="gift-own">
-                <summary>Your own Wonder Card (.wc3 file)</summary>
-                <label class="drop" id="gift-drop">
-                    <input type="file" id="gift-file" accept=".wc3">
-                    <strong>Drop a <code>.wc3</code> file on this card</strong>
-                    <span>or click to choose one</span>
-                </label>
-            </details>
-            <p class="status" id="gift-file-note" aria-live="polite"></p>
-            <p class="fine" id="gift-description" data-base="fine"></p>
-            <p class="gift-pick" id="gift-sav-row" hidden><label for="gift-sav">.sav file</label> <input type="file" id="gift-sav" accept=".sav"></p>
-            <p class="status" id="gift-sav-note" aria-live="polite"></p>
-
-            <div class="session" id="gift-session" hidden>
-                <p class="headline" id="gift-headline">–</p>
-                <p class="hint" id="gift-hint"></p>
-                <div class="transfer" id="gift-progress" hidden>
-                    <div class="transfer-track" role="progressbar" id="gift-progress-bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                        <div class="transfer-fill" id="gift-progress-fill"></div>
-                        <img class="transfer-mon" id="gift-progress-mon" alt="" hidden>
-                    </div>
-                </div>
-                <div class="answers" id="gift-decision" hidden>
-                    <button class="primary" type="button" id="gift-again">Send it again</button>
-                    <button type="button" id="gift-keep">Leave the one it has</button>
-                </div>
-            </div>
-
-            <div class="backups" id="gift-backups" hidden>
-                <p class="backups-title">Backed-up saves</p>
-                <ul class="backups-list" id="gift-backups-list"></ul>
-            </div>
-
-            <p class="status" id="gift-note" aria-live="polite"></p>
-
-            <div class="actions">
-                <button class="primary" id="gift-start">Start</button>
-                <button id="gift-stop" hidden>Stop</button>
-            </div>
-
-            <details class="more" open>
-                <summary>On the Switch</summary>
-                <ol class="fine">
-                    <li>Mystery Gift has to be on the game's main menu first: answer a Poké Mart questionnaire with LINK TOGETHER WITH ALL, then save. The first Poké Mart shows its questionnaire once you have the Pokédex.</li>
-                    <li>Press Start here, then on the Switch pick MYSTERY GIFT, WONDER CARDS, FRIEND, and choose GBLINK.</li>
-                    <li>Once the card is saved, talk to the deliveryman in green upstairs in any Pokémon Center.</li>
-                    <li>The page stays ready: pick another card for the next one, on this Switch or another.</li>
-                </ol>
-            </details>
-            <details class="more">
-                <summary>Where the cards come from</summary>
-                <p class="fine">All of them come from <a href="https://github.com/GB-Link/gblink-wondercards" target="_blank" rel="noopener">gblink-wondercards</a>. Event distributions and the Project Wonder (Goppier) events are the FireRed and LeafGreen events there, the same bytes the distribution cartridges send. The GB-Link Team's cards are built for the Switch's FireRed and LeafGreen and run on its English games.</p>
-            </details>
-        </section>
-
-        <section class="card" id="log-card" aria-labelledby="log-title">
-            <details>
-                <summary><h2 id="log-title">Log</h2></summary>
-                <div class="actions">
-                    <button class="quiet" id="log-copy">Copy</button>
-                    <button class="quiet" id="log-clear">Clear</button>
-                </div>
-                <pre id="log" tabindex="0"></pre>
-            </details>
-        </section>
-    </main>
-
-    <footer>
-        <p>By <a href="https://github.com/starlarkus">Starlark</a>. Part of the <a href="https://gblink.io">GB-Link</a> project.</p>
-        <p>Works in Chrome, Edge and other Chromium browsers on a computer. <a href="https://github.com/GB-Link/GB-Link-Switch-LDN">Source</a> · AGPL-3.0. Firmware is written with <a href="https://github.com/espressif/esptool-js">esptool-js</a> (Apache-2.0) and <a href="https://github.com/picoflash/picoflash">picoflash</a> (MIT). Not affiliated with Nintendo or The Pokémon Company.</p>
-    </footer>
-
-    <script type="module" src="js/app.js"></script>
-    <script src="js/launcher-return.js"></script>
+  <p class="fine">Basado en <a href="https://github.com/GB-Link/GB-Link-Switch-LDN">GB-Link Switch LDN</a> y
+     <a href="https://github.com/Warnster/pokeldn">pokeldn</a> (AGPL-3.0). Funciona en Chrome o Edge de escritorio.
+     No está afiliado a Nintendo ni a The Pokémon Company.</p>
+</main>
+<script type="module" src="js/pokedump.js"></script>
 </body>
 </html>
