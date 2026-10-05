@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PokeDump · Comprobar mi juego</title>
+<style>
+:root { --bg:#f6f7f9; --card:#fff; --ink:#1c2230; --muted:#5b6475; --line:#d9dde5; --accent:#d8432b; --ok:#1f8a4c; --warn:#b26a00; --bad:#c0332b; }
+@media (prefers-color-scheme: dark) { :root { --bg:#12151c; --card:#1b202b; --ink:#e8ebf2; --muted:#9aa3b5; --line:#2c3342; --accent:#ff6a4f; --ok:#4cc07f; --warn:#e6a23c; --bad:#ff7b72; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main { max-width:680px; margin:0 auto; padding:24px 16px 64px; }
+h1 { font-size:1.6rem; margin:.2em 0; }
+.sub { color:var(--muted); margin:0 0 20px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin:14px 0; }
+.step { display:inline-flex; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; align-items:center; justify-content:center; font-weight:700; margin-right:8px; }
+h2 { font-size:1.1rem; margin:0 0 6px; display:flex; align-items:center; }
+.drop { display:block; border:2px dashed var(--line); border-radius:12px; padding:18px; text-align:center; cursor:pointer; color:var(--muted); transition:.15s; }
+.drop:hover, .drop.over { border-color:var(--accent); color:var(--ink); }
+.drop.done { border-style:solid; border-color:var(--ok); color:var(--ink); }
+.drop input { display:none; }
+.drop strong { display:block; color:var(--ink); }
+button, .btn { font:inherit; border:0; border-radius:10px; padding:11px 18px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
+button.quiet, .btn.quiet { background:transparent; color:var(--ink); border:1px solid var(--line); }
+button:disabled { opacity:.45; cursor:not-allowed; }
+.row { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+.status { margin:12px 0 0; min-height:1.5em; color:var(--muted); }
+.status.bad { color:var(--bad); } .status.good { color:var(--ok); }
+.result h3 { margin:.1em 0; font-size:1.3rem; }
+dl { display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; margin:10px 0; }
+dt { color:var(--muted); } dd { margin:0; word-break:break-all; font-family:ui-monospace,Consolas,monospace; font-size:.92rem; }
+.badge { display:inline-block; padding:2px 10px; border-radius:99px; font-size:.85rem; font-weight:600; }
+.badge.ok { background:color-mix(in srgb,var(--ok) 20%,transparent); color:var(--ok); }
+.badge.bad { background:color-mix(in srgb,var(--bad) 20%,transparent); color:var(--bad); }
+.fine { color:var(--muted); font-size:.9rem; }
+details { margin-top:10px; } summary { cursor:pointer; color:var(--muted); }
+.progress { height:6px; background:var(--line); border-radius:6px; overflow:hidden; margin-top:10px; } .progress i { display:block; height:100%; width:30%; background:var(--accent); animation:slide 1.1s infinite ease-in-out; }
+@keyframes slide { 0% { margin-left:-30%; } 100% { margin-left:100%; } }
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Comprobar mi juego</h1>
+  <p class="sub">Descubre la versión exacta de tu Rojo Fuego / Verde Hoja (idioma y revisión) a partir de tu NSP.
+     <strong>Todo ocurre en tu navegador:</strong> el NSP y tus claves no se suben a ningún sitio.</p>
+
+  <section class="card">
+    <h2><span class="step">1</span> Tu juego (.nsp)</h2>
+    <label class="drop" id="nsp-drop">
+      <input type="file" id="nsp-file" accept=".nsp">
+      <strong id="nsp-title">Arrastra aquí el NSP</strong>
+      <span id="nsp-sub">o haz clic para elegirlo</span>
+    </label>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">2</span> Tus claves (prod.keys)</h2>
+    <label class="drop" id="keys-drop">
+      <input type="file" id="keys-file" accept=".keys,.txt,text/plain">
+      <strong id="keys-title">Arrastra aquí tu prod.keys</strong>
+      <span id="keys-sub">o haz clic para elegirlo (el de tu Switch 1)</span>
+    </label>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">3</span> Comprobar</h2>
+    <div class="row"><button id="go" disabled>Comprobar mi juego</button></div>
+    <div class="progress" id="progress" hidden><i></i></div>
+    <p class="status" id="status" aria-live="polite"></p>
+  </section>
+
+  <section class="card result" id="result" hidden>
+    <span class="badge ok" id="badge">Listo</span>
+    <h3 id="game"></h3>
+    <dl>
+      <dt>Código de juego</dt><dd id="r-code"></dd>
+      <dt>Revisión</dt><dd id="r-rev"></dd>
+      <dt>Tamaño</dt><dd id="r-size"></dd>
+      <dt>sha1</dt><dd id="r-sha1"></dd>
+    </dl>
+    <p class="fine" id="advice"></p>
+    <div class="row">
+      <button id="copy">Copiar informe</button>
+      <button class="quiet" id="dl-report">Descargar informe.json</button>
+      <button class="quiet" id="dl-rom">Descargar la ROM (opcional)</button>
+    </div>
+    <p class="fine">El informe no contiene la ROM ni claves: es lo único que hace falta compartir. La ROM es tu copia personal; no la compartas.</p>
+    <div class="row"><a class="btn" href="index.html#gift">Siguiente: volcar la partida →</a></div>
+  </section>
+
+  <details>
+    <summary>¿Algo no funciona?</summary>
+    <ul class="fine">
+      <li><b>«no tiene key_area_key_application_XX / titlekek_XX»:</b> tu prod.keys es anterior al firmware del juego; vuelve a generarlo con Lockpick_RCM.</li>
+      <li><b>«la cabecera no descifra»:</b> la <code>header_key</code> no corresponde a este NSP.</li>
+      <li><b>«no es un NSP»:</b> si es .nsz o .xci, conviértelo a .nsp.</li>
+      <li><b>«no encontré ninguna ROM»:</b> usa el NSP del juego base, no una actualización.</li>
+    </ul>
+  </details>
+</main>
+<script type="module" src="js/dump/extraer-ui.js"></script>
+</body>
+</html>

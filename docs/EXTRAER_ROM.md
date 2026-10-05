@@ -1,5 +1,10 @@
 # Extraer la ROM de tu NSP (Rojo Fuego / Verde Hoja)
 
+> **Forma fácil (sin Python):** abre `extraer.html` de la web de PokeDump (en local:
+> `python3 -m http.server -d web 8000` y <http://localhost:8000/extraer.html>, o la dirección de GitHub
+> Pages), arrastra el NSP y tu `prod.keys`, y pulsa **Comprobar mi juego**. Todo se hace en el navegador.
+> El resto de esta guía es la alternativa por línea de comandos.
+
 Sirve para saber con exactitud qué versión tienes (código, idioma, revisión) y calcular las
 direcciones de memoria de **tu** ROM. Todo se ejecuta en tu ordenador. **No envíes el NSP, la ROM
 ni `prod.keys` a nadie**: solo hace falta compartir `informe.json`.

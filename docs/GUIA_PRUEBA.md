@@ -10,6 +10,9 @@ Switch acaba con un mensaje que **no guarda**. Aun así, se prueba primero con u
   corta el enlace.
 
 ## 1. Abrir la web
+La portada en español es `inicio.html`; desde ahí, **«Comprobar mi juego»** (`extraer.html`) saca la
+versión exacta de tu NSP sin instalar nada.
+
 Elige una de las dos:
 - **Con la web publicada** (la forma sin instalar nada): el repositorio publica `web/` en GitHub
   Pages cuando activas *Settings → Pages → Source: GitHub Actions*. La dirección será

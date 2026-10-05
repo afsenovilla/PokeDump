@@ -11,6 +11,7 @@ equipo y cajas) importable en [Poketracker](https://github.com/afsenovilla/poket
 |---|---|
 | `payload/` | `ramdump.s`: código ARM que la consola ejecuta por Mystery Gift y que lee SaveBlock1/2 y el PC de la RAM |
 | `web/` | Copia de la web de GB-Link + `web/js/dump/` (servidor de volcado, reconstrucción del `.sav` y JSON) |
+| `web/inicio.html`, `web/extraer.html` | Portada en español y comprobación del juego desde el NSP, todo en el navegador (sin Python) |
 | `tools/extract_rom.py` | Saca la ROM de GBA de tu NSP (para conocer tu versión exacta) — [guía](docs/EXTRAER_ROM.md) |
 | `tests/` | Payload en el núcleo de mGBA, extremo a extremo con la «consola» falsa, y unidades |
 | `docs/` | [Guía de prueba](docs/GUIA_PRUEBA.md) · [Formato JSON](docs/FORMATO_JSON.md) · [Extraer ROM](docs/EXTRAER_ROM.md) |
