@@ -88,11 +88,11 @@ export const legendaryEvent = resetEvent();
 export const ULTRA_EVENT_ID = 'ultra-master';
 
 // ¿Tiene la calibración guardada todo lo que necesita la tarjeta de bolas? (las calibraciones anteriores no tenían gLastUsedItem)
-export const supportsUltra = (calibration) => Boolean(calibration) && ULTRA_REQUIRED.every((k) => Number.isInteger(calibration.found?.[k]));
+export const supportsUltra = (calibration) => Boolean(calibration) && [...ULTRA_REQUIRED, 'AddBagItem'].every((k) => Number.isInteger(calibration.found?.[k]));
 
 export const supportsKeep = (calibration) => supportsUltra(calibration) && Number.isInteger(calibration.found?.AddBagItem);
 
-export function ultraEvent(calibration, { balls = 'ultra', keep = false, shiny = null } = {}) {
+export function ultraEvent(calibration, { balls = 'ultra', keep = true, shiny = null } = {}) {
     return {
         id: ULTRA_EVENT_ID,
         kind: 'card',
