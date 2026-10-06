@@ -80,7 +80,7 @@ test:
         if mem.u32[DONE]:
             break
     assert mem.u32[DONE] == 1, "el script no terminó"
-    if one_in == "legendary":
+    if one_in.startswith("reset:"):
         return core, mem, sym
     assert mem.u8[0x0203FF60] == 1, "la tarjeta no marcó la instalación"
     vblank = sym["gIntrTable"] + 0x10
@@ -128,12 +128,17 @@ def test_r_toggles_always_shiny(variant):
     assert seen == [(60, yes), (0, no), (60, yes), (0, no)], seen
 
 
-def test_legendary_card_clears_fought_flags():
-    """El script de la tarjeta Legendarios, con el motor de scripts del juego, borra FLAG_FOUGHT_MEWTWO/MOLTRES/ARTICUNO/ZAPDOS y nada más."""
+@pytest.mark.parametrize("groups,game_code,clears", [
+    ("legendary", "BPRE", True),
+    ("legendary,fossils,hitmon,eevee,lapras,magikarp,snorlax", "BPRE", True),
+    ("legendary,fossils", "BPGE", False),          # otro juego: la comprobación de versión corta el script y no se toca nada
+])
+def test_reset_card_clears_event_flags(groups, game_code, clears):
+    """El script de la tarjeta Reiniciar eventos, con el motor de scripts del juego, borra las banderas de los grupos elegidos y ninguna vecina."""
     import mgba.core, mgba.log
     mgba.log.silence()
     sym = symbols()
-    made = json.loads(subprocess.run(["node", os.path.join(HERE, "make_payload.mjs"), ROM, "BPRE", "1", "legendary"],
+    made = json.loads(subprocess.run(["node", os.path.join(HERE, "make_payload.mjs"), ROM, game_code, "1", "reset:" + groups],
                                      capture_output=True, text=True, check=True).stdout)
     script = bytearray.fromhex(made["script"])
     script[5:7] = b"\x01\x01"
@@ -143,9 +148,10 @@ def test_legendary_card_clears_fought_flags():
         core.run_frame()
     mem = core.memory
     flags = mem.u32[sym["gSaveBlock1Ptr"]] + 0xEE0
-    wanted = (0x2BC, 0x2BD, 0x2BE, 0x2BF)
+    wanted = tuple(made["flags"])
+    neighbours = sorted({n for f in wanted for n in (f - 1, f + 1)} - set(wanted))
     before = bytes(mem.u8[flags:flags + 0x120])
-    for f in wanted + (0x2C0, 0x2BB):
+    for f in wanted + tuple(neighbours):
         mem.u8[flags + f // 8] |= 1 << (f % 8)
     set_state = bytes(mem.u8[flags:flags + 0x120])
     SCRIPT_AT, ROUTINE_AT, DONE = 0x0201C000, 0x02030000, 0x02030FF0
@@ -196,11 +202,12 @@ test:
     assert mem.u32[DONE] == 1, "el script no terminó"
     after = bytes(mem.u8[flags:flags + 0x120])
     for f in wanted:
-        assert not after[f // 8] & (1 << (f % 8)), f"la marca {f:#x} sigue puesta"
-    for f in (0x2C0, 0x2BB):
+        assert bool(after[f // 8] & (1 << (f % 8))) != clears, f"la marca {f:#x}: {'sigue puesta' if clears else 'se borró'}"
+    for f in neighbours:
         assert after[f // 8] & (1 << (f % 8)), f"se borró la marca vecina {f:#x}"
-    changed = [i for i in range(len(after)) if after[i] != set_state[i]]
-    assert changed and all(i in {f // 8 for f in wanted} for i in changed)
+    if clears:
+        changed = [i for i in range(len(after)) if after[i] != set_state[i]]
+        assert changed and all(i in {f // 8 for f in wanted} for i in changed)
 
 
 def run_script_context(core, mem, sym, calls=8):

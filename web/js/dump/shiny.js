@@ -263,37 +263,63 @@ export function buildShinyPayload(found, game, { text = SHINY_TEXT_ES, oneIn = n
 }
 
 
-// Tarjeta «Legendarios»: solo script del juego, sin código nativo ni direcciones. Borra las banderas FLAG_FOUGHT_* de MEWTWO,
-// MOLTRES, ARTICUNO y ZAPDOS (0x2BC–0x2BF); al volver a cargar su mapa, el propio juego los vuelve a mostrar
-// (`call_if_unset FLAG_FOUGHT_X → clearflag FLAG_HIDE_X`). Reutiliza de la tarjeta de Shiny Hunting la comprobación de versión
-// y el mensaje final; el resto del script (que nunca llega a ejecutarse) queda sin usar.
-export const LEGENDARY_FLAGS = [0x2bc, 0x2bd, 0x2be, 0x2bf];
-const LEGENDARY_AT = 0x2b, LEGENDARY_END = 0x56;                 // hueco del script: de los loadword del arranque al mensaje final
+// Tarjeta «Reiniciar eventos»: solo script del juego, sin código nativo ni direcciones. Borra banderas de eventos de un solo uso
+// (`clearflag`) para poder repetirlos; al volver a cargar el mapa el propio juego los vuelve a mostrar. Reutiliza de la tarjeta de Shiny
+// Hunting la comprobación de versión; el resto del script (instalador y gancho, que aquí no se ejecutan) se aprovecha como espacio libre.
+// Banderas de pret/pokefirered (include/constants/flags.h); cada grupo se probó leyendo los scripts del juego que las usan.
+export const RESET_GROUPS = {
+    legendary: { label: 'MEWTWO, ARTICUNO, ZAPDOS y MOLTRES', short: 'MEWTWO y aves', flags: [0x2bc, 0x2bd, 0x2be, 0x2bf] },      // FLAG_FOUGHT_*
+    fossils: { label: 'Elección de fósil (Monte Luna), Ámbar Viejo y su revivir', short: 'fósiles', flags: [0x232, 0x272, 0x273, 0x2ec, 0x2ed, 0x2ee, 0x25e, 0x056] },
+    hitmon: { label: 'HITMONLEE / HITMONCHAN del dojo', short: 'HITMON', flags: [0x278, 0x060, 0x061] },
+    eevee: { label: 'EEVEE de la azotea de Azulona', short: 'EEVEE', flags: [0x263, 0x057] },
+    lapras: { label: 'LAPRAS de Silph S.A.', short: 'LAPRAS', flags: [0x246] },
+    magikarp: { label: 'MAGIKARP de la ruta 4', short: 'MAGIKARP', flags: [0x249] },
+    snorlax: { label: 'SNORLAX de las rutas 12 y 16 (hace falta la Flauta Poké)', short: 'SNORLAX', flags: [0x054, 0x253, 0x080] },
+};
+export const LEGENDARY_FLAGS = RESET_GROUPS.legendary.flags;
+const RESET_AT = 0x2b, RESET_LIMIT = 0x104;                      // hueco libre del script: de los loadword del arranque al instalador
+const GATE_FAIL_POINTERS = [0x0f, 0x1b, 0x27];                  // destino (virtual) del salto cuando no es la versión del juego
 const LEGENDARY_CARD_ID = 0x5044, MEWTWO_ICON = 150;
 
-export function buildLegendaryPayload(game) {
+export function buildResetPayload(game, groups = ['legendary']) {
+    const known = groups.filter((g) => RESET_GROUPS[g]);
+    if (!known.length || known.length !== groups.length) throw new Error('grupos de eventos no admitidos');
+    const flags = [...new Set(known.flatMap((g) => RESET_GROUPS[g].flags))];
     const raw = Uint8Array.from(atob(SHINY_BASE_BASE64.replace(/\s+/g, '')), (c) => c.charCodeAt(0));
     const card = raw.slice(0, CARD_BYTES);
     const script = raw.slice(SCRIPT_AT);
-    if (script[LEGENDARY_AT] !== 0x0f || script[LEGENDARY_END] !== 0xbd) throw new Error('la plantilla de la tarjeta no es la esperada');
+    if (script[RESET_AT] !== 0x0f || script[0x56] !== 0xbd) throw new Error('la plantilla de la tarjeta no es la esperada');
     const code = game.gameCode;
     script[GATE_THIRD] = code.charCodeAt(2);
     script[GATE_LANG] = code.charCodeAt(3);
     script[GATE_REVISION] = game.revision;
-    script.fill(0x00, LEGENDARY_AT, LEGENDARY_END);                // nop
-    LEGENDARY_FLAGS.forEach((flag, i) => script.set([0x2a, flag & 0xff, flag >> 8], LEGENDARY_AT + 3 * i));     // clearflag
-    writeText(script, 0x6a, 0x92 - 0x6a, message('Legendarios listos.', 'Reentra al mapa.'));
-    writeText(script, 0x92, 0xc8 - 0x92, message('Este regalo no funciona con', 'esta versión del juego.'));
+    script.fill(0x00, RESET_AT, RESET_LIMIT);                      // nop
+    flags.forEach((flag, i) => script.set([0x2a, flag & 0xff, flag >> 8], RESET_AT + 3 * i));        // clearflag
+    // Después de las banderas: mensaje de éxito, mensaje de «versión no compatible» y sus textos (el salto de la comprobación apunta al segundo).
+    const okBlock = RESET_AT + 3 * flags.length, failBlock = okBlock + 10, okText = failBlock + 10, failText = okText + 40;
+    if (failText + 54 > RESET_LIMIT) throw new Error('demasiados eventos para el espacio de la tarjeta');
+    const vptr = (offset) => [offset & 0xff, (offset >> 8) & 0xff, 0x00, 0x08];                    // 0x08000000 + posición en el script
+    script.set([0xbd, ...vptr(okText), 0x66, 0x6d, 0x68, 0x6c, 0x02], okBlock);                    // vmessage ; waitmessage ; waitbuttonpress ; … ; end (como en la plantilla)
+    script.set([0xbd, ...vptr(failText), 0x66, 0x6d, 0x68, 0x6c, 0x02], failBlock);
+    for (const at of GATE_FAIL_POINTERS) script.set(vptr(failBlock), at);
+    writeText(script, okText, 40, message('Eventos listos.', 'Reentra al mapa.'));
+    writeText(script, failText, 54, message('Este regalo no funciona con', 'esta versión del juego.'));
     card[0] = LEGENDARY_CARD_ID & 0xff; card[1] = LEGENDARY_CARD_ID >> 8;
     card[2] = MEWTWO_ICON & 0xff; card[3] = MEWTWO_ICON >> 8;
-    writeText(card, 10, 40, [...line('LEGENDARIOS'), 0xff]);
-    writeText(card, 50, 40, [...line('MEWTWO y las aves, de nuevo'), 0xff]);
-    ['Reactiva a MEWTWO, ARTICUNO,', 'ZAPDOS y MOLTRES aunque ya', 'los hayas capturado. Habla con', 'el repartidor y vuelve a su mapa.']
+    const names = known.map((g) => RESET_GROUPS[g].short).join(', ');
+    const wrapped = [];
+    let current = '';
+    for (const word of names.split(' ')) { if ((current + ' ' + word).trim().length > 36) { wrapped.push(current); current = word; } else current = (current + ' ' + word).trim(); }
+    wrapped.push(current);
+    writeText(card, 10, 40, [...line('REINICIAR EVENTOS'), 0xff]);
+    writeText(card, 50, 40, [...line('Vuelve a hacerlos'), 0xff]);
+    ['Reactiva eventos de un solo uso:', ...wrapped.slice(0, 2), 'Habla con el repartidor del CENTRO.'].slice(0, 4)
         .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
     writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
-    return { card, script };
+    return { card, script, flags };
 }
 
+export const buildLegendaryPayload = (game) => buildResetPayload(game, ['legendary']);
 
 // Tarjeta «Ultra Ball = Master Ball»: reutiliza el instalador y el gancho de V-Blank de la tarjeta de Shiny Hunting, pero deja solo
 // una función en el gancho. Cada V-Blank:
