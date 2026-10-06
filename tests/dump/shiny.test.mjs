@@ -199,3 +199,20 @@ test('tarjeta Reiniciar eventos: todos los grupos caben, sin banderas repetidas 
     for (const gate of [0x0f, 0x1b, 0x27]) assert.deepEqual([...script.slice(gate, gate + 4)], [failBlock & 0xff, failBlock >> 8, 0, 8]);
     assert.throws(() => buildResetPayload({ gameCode: 'BPRS', revision: 10 }, ['nada']), /no admitidos/);
 });
+
+test('tarjeta Regalos shiny: cabe en el hueco, anula las llamadas del gancho que sobran y exige las direcciones nuevas', async () => {
+    const { buildGiftShinyPayload } = await import('../../web/js/dump/shiny.js');
+    const found = { ...synthetic(), gPlayerPartyCount: 0x02024029, gPlayerParty: 0x02024284, gPokemonStoragePtr: 0x03005010 };
+    const game = { gameCode: 'BPGS', revision: 10 };
+    const w = (b, at) => b[at] | (b[at + 1] << 8);
+    for (const oneIn of [1, 16, 64]) {
+        const { script, card, summary } = buildGiftShinyPayload(found, game, { oneIn });
+        assert.equal(w(script, 0x136), 0xb5e0);                           // función de regalos en 0x286 (archivo)
+        assert.equal(w(script, 0x120), 0x46c0); assert.equal(w(script, 0x124), 0x46c0);   // sin gestor de R ni llamada directa a la función de shiny
+        assert.equal(w(script, 0x1e2), 0x69a5);                           // la función de shiny toma el puntero de +24
+        assert.equal(u32(script, 0x34c), 0x02024029); assert.equal(u32(script, 0x350), 0x02024284); assert.equal(u32(script, 0x354), 0x03005010);
+        assert.equal(card.length, 332); assert.match(summary, /regalos/);
+    }
+    assert.throws(() => buildGiftShinyPayload(synthetic(), game, {}), /faltan direcciones/);
+    assert.throws(() => buildGiftShinyPayload(found, game, { oneIn: 3 }), /probabilidad fija/);
+});

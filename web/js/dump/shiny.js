@@ -59,7 +59,7 @@ function find(rom, str, entry, limit = 3) {
     return hits;
 }
 
-const OPTIONAL_SYMBOLS = ['gLastUsedItem', 'AddBagItem'];
+const OPTIONAL_SYMBOLS = ['gLastUsedItem', 'AddBagItem', 'gPlayerPartyCount', 'gPlayerParty', 'gPokemonStoragePtr'];
 const inRange = {
     func: (v, size) => v >= ROM_BASE && v < ROM_BASE + size,
     ewram: (v) => v >= 0x02000000 && v < 0x02040000,
@@ -351,6 +351,40 @@ const ULTRA_CARD_ID = 0x5046, MON_DATA_POKEBALL = 38, BX_R3_AT = 0x284;
 const ULTRA_ALONE = { start: 0x330, state: 8, lastUsed: 0x340, enemy: 0x344, get: 0x360, set: 0x364, add: 0x36c };
 const ULTRA_WITH_SHINY = { start: 0x286, state: 20, lastUsed: 0x34c, enemy: 0x340, get: 0x360, set: 0x364, add: 0x350 };      // BX_R3_AT: «bx r3» del gancho, al que se llega con bl
 
+// Ensamblador mínimo de Thumb para las funciones del gancho. Elementos: un número (halfword), { label }, { ldr: rd, pool: dirección },
+// { b: 0xd000 | cond<<8, to: etiqueta } (salto condicional, ±127 halfwords), { bu: etiqueta } (salto incondicional) y
+// { bl: dirección absoluta o etiqueta }. Las direcciones son posiciones en el archivo de la tarjeta (script + 336).
+function assembleThumb(items, start) {
+    const labels = {};
+    let pc = start;
+    for (const it of items) { if (it.label) labels[it.label] = pc; else pc += it.bl !== undefined ? 4 : 2; }
+    const target = (to) => (typeof to === 'string' ? labels[to] : to);
+    const out = [];
+    pc = start;
+    for (const it of items) {
+        if (it.label) continue;
+        if (typeof it === 'number') { out.push(it); pc += 2; continue; }
+        if (it.ldr !== undefined) {
+            const imm = (it.pool - ((pc + 4) & ~3)) / 4;
+            if (!Number.isInteger(imm) || imm < 0 || imm > 255) throw new Error('literal fuera de alcance');
+            out.push(0x4800 | (it.ldr << 8) | imm); pc += 2; continue;
+        }
+        if (it.b !== undefined) {
+            const off = (labels[it.to] - (pc + 4)) / 2;
+            if (off < -128 || off > 127) throw new Error('salto fuera de alcance');
+            out.push(it.b | (off & 0xff)); pc += 2; continue;
+        }
+        if (it.bu !== undefined) {
+            const off = (labels[it.bu] - (pc + 4)) / 2;
+            if (off < -1024 || off > 1023) throw new Error('salto fuera de alcance');
+            out.push(0xe000 | (off & 0x7ff)); pc += 2; continue;
+        }
+        const off = target(it.bl) - (pc + 4);
+        out.push(0xf000 | ((off >> 12) & 0x7ff), 0xf800 | ((off >> 1) & 0x7ff)); pc += 4;
+    }
+    return out;
+}
+
 // Ensamblador mínimo de Thumb para la función del gancho. Posiciones en el archivo de la tarjeta (script + 336).
 function assembleUltraFunction(n, keep, cfg = ULTRA_ALONE) {
     const pool = (scriptAt) => scriptAt + SCRIPT_AT;                     // dirección en archivo de una palabra del pool de literales
@@ -376,29 +410,7 @@ function assembleUltraFunction(n, keep, cfg = ULTRA_ALONE) {
         { label: 'end' },
         0xbd00,                                                          // pop {pc}
     ];
-    const START = cfg.start;
-    const labels = {};
-    let pc = START;
-    for (const it of items) { if (it.label) labels[it.label] = pc; else pc += it.bl !== undefined ? 4 : 2; }
-    const out = [];
-    pc = START;
-    for (const it of items) {
-        if (it.label) continue;
-        if (typeof it === 'number') { out.push(it); pc += 2; continue; }
-        if (it.ldr !== undefined) {
-            const imm = (it.pool - ((pc + 4) & ~3)) / 4;
-            if (!Number.isInteger(imm) || imm < 0 || imm > 255) throw new Error('literal fuera de alcance');
-            out.push(0x4800 | (it.ldr << 8) | imm); pc += 2; continue;
-        }
-        if (it.b !== undefined) {
-            const off = (labels[it.to] - (pc + 4)) / 2;
-            if (off < 0 || off > 127) throw new Error('salto fuera de alcance');
-            out.push(it.b | off); pc += 2; continue;
-        }
-        const off = it.bl - (pc + 4);
-        out.push(0xf000 | ((off >> 12) & 0x7ff), 0xf800 | ((off >> 1) & 0x7ff)); pc += 4;
-    }
-    return out;
+    return assembleThumb(items, cfg.start);
 }
 
 // shiny: null = solo la bola; 'toggle' o 1/N de SHINY_FIXED_ODDS = además Shiny Hunting con esa probabilidad (la tarjeta de bolas
@@ -466,4 +478,96 @@ function buildUltraWithShiny(found, game, { n, balls, keep, shiny }) {
         .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
     writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
     return { card, script, summary: `${which}${keep ? ' (no se gasta)' : ''} + ${odds}` };
+}
+
+
+// Tarjeta «Regalos shiny»: Shiny Hunting con probabilidad fija que además actúa sobre los Pokémon que te dan (givemon/giveegg: iniciales,
+// fósiles, Hitmon, Eevee, Lapras, Magikarp, huevos…). Cada V-Blank, además del enemigo, una función nueva (en el hueco de la cadena y del
+// gestor de R, que aquí no hacen falta) vigila:
+//  · gPlayerPartyCount: si sube, el Pokémon nuevo es el último del equipo (gPlayerParty + (n−1)·100).
+//  · la primera casilla libre de la caja actual (gPokemonStoragePtr): si pasa de i a j > i en la misma caja, el Pokémon nuevo está en la
+//    casilla i. Como el cálculo de estadísticas necesita un struct Pokemon (100 bytes) y las cajas guardan 80, se copia a un búfer en el
+//    estado del gancho, se aplica y se copia de vuelta.
+// Para cada candidato se llama a la función de shiny de siempre (con el puntero al Pokémon en +24 del estado y fingiendo que es nuevo), que
+// solo actúa si el juego está en el campo y el Pokémon es tuyo (mismo ID de entrenador): los intercambios y lo que ocurre en combates,
+// en el PC o en los menús no se tocan. Si el equipo está lleno, el regalo va a la caja y se trata igual.
+export const GIFT_REQUIRED = ['gPlayerPartyCount', 'gPlayerParty', 'gPokemonStoragePtr'];
+const GIFT_STATE = { target: 24, lastCount: 28, lastBox: 30, lastIdx: 31, slot: 36, temp: 0x38 };   // temp: 100 bytes hasta 0x0203FFFC, dentro de la EWRAM   // desplazamientos desde el estado del gancho
+const GIFT_POOL = { enemy: 0x340, count: 0x34c, party: 0x350, storage: 0x354 };
+const GIFT_AT = 0x286, SHINY_FN = 0x330;
+const ldrW = (rd, rn, off) => 0x6800 | ((off / 4) << 6) | (rn << 3) | rd;                  // ldr  rd, [rn, #off]
+const strW = (rd, rn, off) => 0x6000 | ((off / 4) << 6) | (rn << 3) | rd;                  // str  rd, [rn, #off]
+const ldrB = (rd, rn, off) => 0x7800 | (off << 6) | (rn << 3) | rd;                        // ldrb rd, [rn, #off]
+const strB = (rd, rn, off) => 0x7000 | (off << 6) | (rn << 3) | rd;                        // strb rd, [rn, #off]
+
+function assembleGiftFunction() {
+    const pool = (scriptAt) => scriptAt + SCRIPT_AT;
+    const g = GIFT_STATE;
+    const copy80 = (loop) => [0x2250, { label: loop }, 0x3a04, 0x5883, 0x508b, { b: 0xd100, to: loop }];   // movs r2,#80 ; L: subs r2,#4 ; ldr r3,[r0,r2] ; str r3,[r1,r2] ; bne L
+    return assembleThumb([
+        0xb5e0,                                                                  // push {r5,r6,r7,lr}
+        // Equipo: ¿ha subido el número de Pokémon?
+        { ldr: 0, pool: pool(GIFT_POOL.count) }, ldrB(1, 0, 0), ldrB(2, 4, g.lastCount), strB(1, 4, g.lastCount),
+        0x2a00, { b: 0xd000, to: 'box' },                                        // cmp r2,#0 ; beq box   (sin instantánea previa)
+        0x4291, { b: 0xd900, to: 'box' },                                        // cmp r1,r2 ; bls box
+        0x3901, 0x2264, 0x4351, { ldr: 0, pool: pool(GIFT_POOL.party) }, 0x1840, // subs r1,#1 ; movs r2,#100 ; muls r1,r2 ; ldr r0,=gPlayerParty ; adds r0,r0,r1
+        { bl: 'gift' },
+        // Cajas: primera casilla libre de la caja actual
+        { label: 'box' },
+        { ldr: 0, pool: pool(GIFT_POOL.storage) }, ldrW(0, 0, 0), ldrB(5, 0, 0),    // ldr r0,=gPokemonStoragePtr ; ldr r0,[r0] ; ldrb r5,[r0]   (caja actual)
+        0x2196, 0x0109, 0x4369, 0x1840, 0x3004,                                  // movs r1,#150 ; lsls r1,r1,#4 ; muls r1,r5 ; adds r0,r0,r1 ; adds r0,#4   (base de la caja)
+        0x0006, 0x2100,                                                          // movs r6,r0 ; movs r1,#0
+        { label: 'scan' },
+        ldrB(3, 0, 0x13), 0x079b, { b: 0xd500, to: 'found' },                    // ldrb r3,[r0,#0x13] ; lsls r3,r3,#30 ; bpl found   (bit «hasSpecies» a 0 = libre)
+        0x3050, 0x3101, 0x291e, { b: 0xd100, to: 'scan' },                       // adds r0,#80 ; adds r1,#1 ; cmp r1,#30 ; bne scan
+        { label: 'found' },
+        ldrB(2, 4, g.lastIdx), ldrB(3, 4, g.lastBox), strB(5, 4, g.lastBox), 0x1c48, strB(0, 4, g.lastIdx),   // r2 = índice anterior + 1 ; r3 = caja anterior ; guarda caja e índice + 1
+        0x2a00, { b: 0xd000, to: 'end' },                                        // cmp r2,#0 ; beq end   (sin instantánea previa)
+        0x3a01, 0x42ab, { b: 0xd100, to: 'end' },                                // subs r2,#1 ; cmp r3,r5 ; bne end   (otra caja)
+        0x428a, { b: 0xd200, to: 'end' },                                        // cmp r2,r1 ; bcs end   (no hay Pokémon nuevo)
+        0x2150, 0x4351, 0x1870, { bl: 'boxapply' },                              // movs r1,#80 ; muls r1,r2 ; adds r0,r6,r1 ; boxapply(casilla antigua)
+        // Enemigo (al final, para que el «último visto» que dejan los regalos no importe): la función de shiny recibe el puntero en +24
+        { label: 'end' },
+        { ldr: 0, pool: pool(GIFT_POOL.enemy) }, strW(0, 4, g.target), { bl: SHINY_FN },
+        0xbde0,                                                                  // pop {r5,r6,r7,pc}
+        // gift(r0 = struct Pokemon *): la función de shiny lo trata como nuevo (se pone a 0 el último «visto»)
+        { label: 'gift' },
+        0xb500, strW(0, 4, g.target), 0x2100, strW(1, 4, 12), { bl: SHINY_FN }, 0xbd00,
+        // boxapply(r0 = casilla de la caja): copia a un struct Pokemon temporal, aplica y devuelve
+        { label: 'boxapply' },
+        0xb500, strW(0, 4, g.slot), 0x0021, 0x3100 | g.temp, { bl: 'copy' },     // push {lr} ; guarda la casilla ; r1 = estado + 0x38 ; copia casilla → temporal
+        0x0020, 0x3000 | g.temp, { bl: 'gift' },                                 // movs r0,r4 ; adds r0,#0x38 ; gift(temporal)
+        ldrW(1, 4, g.slot), 0x0020, 0x3000 | g.temp, { bl: 'copy' },             // ldr r1,[r4,#slot] ; r0 = temporal ; copia temporal → casilla
+        0xbd00,                                                                  // pop {pc}
+        // copy(r0 = origen, r1 = destino): 80 bytes
+        { label: 'copy' },
+        ...copy80('c1'), 0x4770,                                                 // bx lr
+    ], GIFT_AT);
+}
+
+export function buildGiftShinyPayload(found, game, { oneIn = 1 } = {}) {
+    if (!SHINY_FIXED_ODDS.includes(oneIn)) throw new Error('los regalos solo se combinan con una probabilidad fija');
+    const missing = GIFT_REQUIRED.filter((k) => found[k] === undefined);
+    if (missing.length) throw new Error(`faltan direcciones del juego: ${missing.join(', ')}`);
+    const { card, script } = buildShinyPayload(found, game, { oneIn });
+    const at = (file) => file - SCRIPT_AT;
+    const fn = assembleGiftFunction();
+    if (fn.length * 2 > SHINY_FN - GIFT_AT) throw new Error(`la función de regalos no cabe (${fn.length * 2} > ${SHINY_FN - GIFT_AT} bytes)`);
+    patchHalfwords(script, at(GIFT_AT), [0xb500, 0x7860], [0xb500, 0x7860], 'función de la cadena');
+    patchHalfwords(script, at(0x270), [0xf000, 0xf840, 0xf000, 0xf85c], [0x46c0, 0x46c0, 0x46c0, 0x46c0], 'llamadas del gancho');   // se conserva «bl 0x286»
+    patchHalfwords(script, at(SHINY_FN), [0xb500, 0x4d57], [0xb500, ldrW(5, 4, GIFT_STATE.target)], 'función de shiny');   // r5 = puntero del estado
+    for (let i = at(GIFT_AT); i < at(SHINY_FN); i += 2) { script[i] = 0xc0; script[i + 1] = 0x46; }
+    fn.forEach((w, i) => { script[at(GIFT_AT) + 2 * i] = w & 0xff; script[at(GIFT_AT) + 2 * i + 1] = w >> 8; });
+    put32(script, GIFT_POOL.count, found.gPlayerPartyCount >>> 0);
+    put32(script, GIFT_POOL.party, found.gPlayerParty >>> 0);
+    put32(script, GIFT_POOL.storage, found.gPokemonStoragePtr >>> 0);
+    const odds = oneIn === 1 ? 'siempre shiny' : `shiny 1/${oneIn}`;
+    writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', 'Regalos shiny.'));
+    card[0] = 0x47; card[1] = 0x50; card[2] = 150; card[3] = 0;
+    writeText(card, 10, 40, [...line('REGALOS SHINY'), 0xff]);
+    writeText(card, 50, 40, [...line(odds), 0xff]);
+    ['Salvajes, estáticos y regalos', '(iniciales, fósiles, huevos)', 'al equipo o a las cajas, hasta', 'cerrar el juego. Habla al repartidor.']
+        .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
+    writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
+    return { card, script, summary: `regalos + ${odds}` };
 }

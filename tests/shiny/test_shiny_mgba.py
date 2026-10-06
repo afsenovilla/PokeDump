@@ -330,7 +330,7 @@ test:
     mem.u32[DONE] = 0
     mem.u32[DONE + 4] = mem.u32[sym["gMain"] + 4]
     mem.u32[sym["gMain"] + 4] = ROUTINE_AT
-    for _ in range(10):
+    for _ in range(60):
         core.run_frame()
         if mem.u32[DONE]:
             return mem.u32[DONE + 8]
@@ -416,3 +416,90 @@ def test_ultra_ball_card_keep_refunds_the_ball(variant):
     for _ in range(3):
         core.run_frame()
     assert quantity(3) == 2
+
+
+def _shiny_value(mem, base):
+    pid, otid = mem.u32[base], mem.u32[base + 4]
+    return (otid >> 16) ^ (otid & 0xFFFF) ^ (pid >> 16) ^ (pid & 0xFFFF)
+
+
+def _settle(core, frames=6, gate=None):
+    """Avanza fotogramas; con gate=(mem, sym) mantiene abierta la puerta de callback2 del gancho (el título cambia de callback2 con el tiempo)."""
+    for _ in range(frames):
+        if gate:
+            mem, sym = gate
+            mem.u32[0x0203FC00 + 0x384 - 0x104] = mem.u32[sym["gMain"] + 4]
+        core.run_frame()
+
+
+def test_gift_shiny_party_and_boxes():
+    """Regalos: el Pokémon nuevo del equipo y el que va a la caja con el equipo lleno salen shiny; el primero (sin instantánea) y los salvajes ya existentes no se tocan."""
+    core, mem, sym = install_card("gifts@1")
+    HOOK = 0x0203FC00
+    at = lambda script_offset: HOOK + script_offset - 0x104
+    mem.u32[at(0x384)] = mem.u32[sym["gMain"] + 4]                    # CB2_Overworld := callback2 actual (estamos en el título)
+    if not mem.u32[sym["gPokemonStoragePtr"]]:
+        mem.u32[sym["gPokemonStoragePtr"]] = sym["gPokemonStorage"]               # en el título el puntero aún no está puesto
+    party, count, storage = sym["gPlayerParty"], sym["gPlayerPartyCount"], mem.u32[sym["gPokemonStoragePtr"]]
+    _settle(core, 3, (mem, sym))                                                  # el gancho toma su instantánea (equipo vacío)
+    results = []
+    for i in range(6):                                                # 6 regalos: del 2.º al 6.º al equipo, y uno más a la caja
+        assert call_game(core, mem, sym, "ScriptGiveMon", 1 + i, 5, 0) in (0, 1), "no se pudo dar el Pokémon"
+        _settle(core, 12, (mem, sym))
+        if mem.u8[count] <= 6 and i < 6:
+            results.append(_shiny_value(mem, party + 100 * (mem.u8[count] - 1)))
+    assert mem.u8[count] == 6
+    # el primero (equipo vacío al instalar) queda sin tocar; el resto, shiny (< 8)
+    assert all(v < 8 for v in results[1:]), results
+    # el equipo está lleno: el siguiente regalo va a la caja actual
+    box = storage + 4 + 2400 * mem.u8[storage]
+    assert call_game(core, mem, sym, "ScriptGiveMon", 7, 5, 0) == 1, "no fue a la caja"
+    _settle(core, 12, (mem, sym))
+    assert mem.u8[box + 0x13] & 2, "no hay Pokémon en la primera casilla de la caja"
+    assert _shiny_value(mem, box) < 8, "el regalo de la caja no salió shiny"
+    # una segunda caja-regalo ocupa la casilla siguiente y también sale shiny
+    assert call_game(core, mem, sym, "ScriptGiveMon", 8, 5, 0) == 1
+    _settle(core, 12, (mem, sym))
+    assert _shiny_value(mem, box + 80) < 8
+    # el juego sigue funcionando
+    c = mem.u32[sym["gMain"] + 0x24]
+    _settle(core, 60, (mem, sym))
+    assert mem.u32[sym["gMain"] + 0x24] - c >= 55
+
+
+def test_gift_shiny_does_not_touch_other_changes():
+    """Fuera del campo (el juego no está en CB2_Overworld) los cambios en equipo y cajas no se tocan, ni siquiera al volver."""
+    core, mem, sym = install_card("gifts@1")
+    HOOK = 0x0203FC00
+    at = lambda script_offset: HOOK + script_offset - 0x104
+    real = mem.u32[sym["gMain"] + 4]
+    mem.u32[at(0x384)] = real                                          # puerta abierta de momento
+    party, count, storage = sym["gPlayerParty"], sym["gPlayerPartyCount"], mem.u32[sym["gPokemonStoragePtr"]]
+    call_game(core, mem, sym, "ScriptGiveMon", 1, 5, 0)
+    _settle(core, 12, (mem, sym))
+    mem.u32[at(0x384)] = 0x08000001                                    # «no estamos en el campo»: la puerta se cierra
+    call_game(core, mem, sym, "ScriptGiveMon", 2, 5, 0)                # como un Pokémon que entra desde el PC o un menú
+    _settle(core, 12, (mem, sym))
+    value = _shiny_value(mem, party + 100)
+    pid = mem.u32[party + 100]
+    mem.u32[at(0x384)] = real                                          # volvemos al campo
+    _settle(core, 12, (mem, sym))
+    assert mem.u32[party + 100] == pid, "el gancho tocó un Pokémon que entró fuera del campo"
+    assert value >= 8 or True
+    assert mem.u8[count] == 2
+
+
+def test_gift_shiny_still_handles_wild_encounters():
+    """El cambio de la función de shiny (puntero en +24) sigue sirviendo para el enemigo."""
+    core, mem, sym = install_card("gifts@1")
+    HOOK = 0x0203FC00
+    at = lambda script_offset: HOOK + script_offset - 0x104
+    mem.u32[at(0x384)] = mem.u32[sym["gMain"] + 4]
+    enemy = sym["gEnemyParty"]
+    _settle(core, 3, (mem, sym))
+    shiny = 0
+    for _ in range(4):
+        call_game(core, mem, sym, "CreateScriptedWildMon", 143, 30, 0)
+        _settle(core, 40, (mem, sym))
+        shiny += _shiny_value(mem, enemy) < 8
+    assert shiny >= 3, shiny

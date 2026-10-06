@@ -70,6 +70,25 @@ queda a 0, así que apagado = 1/1024. No se puede combinar con el modo original 
 en +20 del estado del gancho (en la sola, en +8) y usa huecos libres del pool de literales. Probado en el emulador: instalación, conversión,
 restauración de la bola, reembolso y la tecla R en las variantes combinadas.
 
+## Tarjeta «Regalos shiny» (equipo y cajas)
+
+Los regalos del juego (`givemon`/`giveegg`: iniciales, fósiles, Hitmon, Eevee, Lapras, Magikarp, huevos) se crean fuera de los combates, así
+que el gancho normal no los toca. Esta tarjeta es Shiny Hunting con probabilidad fija (1/64 … siempre) más una función nueva, en el hueco de
+la función de la cadena y del gestor de R (aquí no hacen falta, así que no lleva la tecla R ni la bola), que cada V-Blank vigila:
+
+- **Equipo:** si `gPlayerPartyCount` sube, el Pokémon nuevo es `gPlayerParty + (n−1)·100`.
+- **Cajas:** guarda la primera casilla libre de la caja actual (`gPokemonStoragePtr`, bit `hasSpecies` del byte 0x13 de cada `BoxPokemon`);
+  si pasa de *i* a *j > i* en la misma caja, el Pokémon nuevo está en la casilla *i*. Se copia a un `struct Pokemon` temporal (el cálculo de
+  estadísticas necesita 100 bytes y las cajas guardan 80), se aplica y se copia de vuelta.
+
+Para cada candidato se llama a la función de shiny de siempre (con el puntero en +24 del estado y como si fuera nuevo), que solo actúa si el
+juego está en el campo (`CB2_Overworld`) y el Pokémon es tuyo (mismo ID): los intercambios y lo que entra desde el PC o un menú no se tocan,
+y los capturados ya salieron shiny en el combate. El primer Pokémon que entra con el equipo vacío no se toca (no hay instantánea previa).
+Probado en el emulador con `ScriptGiveMon`: regalos al equipo, a la caja con el equipo lleno y a la segunda casilla, sin falsos positivos
+fuera del campo, y los salvajes siguen funcionando. Necesita tres direcciones más (`gPlayerPartyCount`, `gPlayerParty`,
+`gPokemonStoragePtr`): hay que repetir «Comprobar mi juego» una vez. Un fallo encontrado y corregido en las pruebas: el búfer temporal debe
+acabar antes del final de la EWRAM (0x0203FFFC); si se pasa, la escritura da la vuelta y corrompe el montón del juego.
+
 ## Tarjeta «Reiniciar eventos»
 
 Otra tarjeta, solo de script del juego (sin código nativo ni calibración): borra con `clearflag` las marcas de eventos de un solo uso, a
