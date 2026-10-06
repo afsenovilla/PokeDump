@@ -111,15 +111,15 @@ export const GIFT_EVENT_ID = 'gift-shiny';
 export const supportsGifts = (calibration) => Boolean(calibration) && [...GIFT_REQUIRED, ...SHINY_SLOTS.map((s) => s[1])].every((k) => Number.isInteger(calibration.found?.[k]));
 
 // Shiny Hunting con probabilidad fija (1/N de SHINY_FIXED_ODDS; 1 = siempre) que además actúa sobre los regalos del equipo y de las cajas.
-export function giftEvent(calibration, { oneIn = 1 } = {}) {
+export function giftEvent(calibration, { oneIn = 1, reset = null } = {}) {
     return {
         id: GIFT_EVENT_ID,
         kind: 'card',
-        label: `Regalos shiny (${oneIn === 1 ? 'siempre' : `1/${oneIn}`})`,
+        label: `Regalos shiny (${oneIn === 1 ? 'siempre' : `1/${oneIn}`})${reset ? ` + reiniciar ${reset}` : ''}`,
         build(game) {
             const cal = calibrationFor(calibration, game);
             if (!cal) return null;
-            return buildGiftShinyPayload(cal.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn });
+            return buildGiftShinyPayload(cal.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn, reset });
         },
     };
 }

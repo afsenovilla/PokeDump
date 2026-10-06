@@ -125,3 +125,8 @@ Para los fósiles necesitas el fósil en la mochila para revivirlo, y volver a e
 
 La tarjeta (código y textos originales) es del GB-Link Team, GPL-3.0. Los patrones de búsqueda salen del código de
 [pret/pokefirered](https://github.com/pret/pokefirered).
+
+
+## Regalos shiny + reiniciar un evento
+
+La tarjeta de Regalos shiny puede, además, reiniciar **un** evento (fósiles, Hitmons, Eevee, Lapras, Magikarp, legendarios o Snorlax): se elige en el panel «Reiniciar un evento a la vez». Solo uno porque el script de la tarjeta no tiene más hueco (los `clearflag` van donde estaba el gestor de R); las islas (pases) no caben, y para varios eventos o las islas hay que usar la tarjeta Reiniciar eventos aparte.

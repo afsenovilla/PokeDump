@@ -20,7 +20,7 @@ def symbols():
     return {p[2]: int(p[0], 16) for p in (l.split() for l in out.splitlines()) if len(p) == 3}
 
 
-def install_card(one_in):
+def install_card(one_in, before=None):
     import mgba.core, mgba.log
     mgba.log.silence()
     sym = symbols()
@@ -34,6 +34,8 @@ def install_card(one_in):
         core.run_frame()
     mem = core.memory
     SCRIPT_AT, ROUTINE_AT, DONE = 0x0201C000, 0x02030000, 0x02030FF0
+    if before:
+        before(core, mem, sym, made)
     for i, b in enumerate(script):
         mem.u8[SCRIPT_AT + i] = b
     thumb = lambda name: sym[name] | 1
@@ -503,3 +505,27 @@ def test_gift_shiny_still_handles_wild_encounters():
         _settle(core, 40, (mem, sym))
         shiny += _shiny_value(mem, enemy) < 8
     assert shiny >= 3, shiny
+
+
+@pytest.mark.parametrize("group,flags", [("fossils", [0x232, 0x272, 0x273, 0x2ec, 0x2ed, 0x2ee, 0x25e, 0x056]), ("legendary", [0x2bc, 0x2bd, 0x2be, 0x2bf]), ("lapras", [0x246])])
+def test_gift_card_with_one_event_reset(group, flags):
+    """Regalos shiny + un evento: instala el gancho como siempre y además borra las banderas del evento (y ninguna vecina)."""
+    neighbours = sorted({n for f in flags for n in (f - 1, f + 1)} - set(flags))
+    state = {}
+
+    def before(core, mem, sym, made):
+        state["base"] = mem.u32[sym["gSaveBlock1Ptr"]] + 0xEE0
+        for f in flags + neighbours:
+            mem.u8[state["base"] + f // 8] |= 1 << (f % 8)
+
+    core, mem, sym = install_card(f"gifts@1+{group}", before)
+    base = state["base"]
+    for f in flags:
+        assert not mem.u8[base + f // 8] & (1 << (f % 8)), f"la marca {f:#x} sigue puesta"
+    for f in neighbours:
+        assert mem.u8[base + f // 8] & (1 << (f % 8)), f"se borró la marca vecina {f:#x}"
+    counter = lambda: mem.u32[sym["gMain"] + 0x24]
+    before_frames = counter()
+    for _ in range(300):
+        core.run_frame()
+    assert counter() - before_frames >= 250, "el V-Blank dejó de ejecutarse"
