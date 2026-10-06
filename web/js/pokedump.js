@@ -301,7 +301,14 @@ function keysLine() {
 // ---------------------------------------------------------------- volcado
 
 const calibration = loadCalibration();
-const eventById = (id) => (id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: $('shiny-odds').value === 'toggle' ? 'toggle' : Number($('shiny-odds').value) || null }) : null) : DUMP_EVENTS.find((e) => e.id === id));
+// Probabilidad elegida en el panel: null = original (cadena), 'toggle' = R alterna, o 1/N fija.
+function chosenOdds() {
+    const value = document.querySelector('input[name="odds"]:checked')?.value ?? '';
+    if (value === 'toggle') return 'toggle';
+    if (value === 'fixed') return Number(document.querySelector('input[name="fixed"]:checked')?.value) || null;
+    return Number(value) || null;
+}
+const eventById = (id) => (id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
@@ -450,8 +457,9 @@ function renderDump() {
     for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = running || (radio.value === SHINY_EVENT_ID && !calibration);
     const card = chosenMode() === SHINY_EVENT_ID;
     for (const li of document.querySelectorAll('.card-only')) li.hidden = !card;
-    $('odds-row').hidden = !calibration;
-    $('shiny-odds').disabled = running;
+    $('odds-panel').hidden = !(calibration && card);
+    $('fixed-chips').hidden = document.querySelector('input[name="odds"]:checked')?.value !== 'fixed';
+    for (const input of document.querySelectorAll('#odds-panel input')) input.disabled = running;
     $('shiny-desc').textContent = calibration
         ? `Probabilidad shiny mucho más alta en combates salvajes, con cadena por especie. Calibrada para ${describeGameCode(calibration.gameCode)}. No es de solo lectura: cambia el juego hasta que lo cierres o reinicies.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» una vez, para que la página encuentre las direcciones de tu versión del juego.';
@@ -520,6 +528,7 @@ function wire() {
     $('start').onclick = giftStart;
     $('stop').onclick = () => giftStop();
     for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', render);
+    for (const radio of document.querySelectorAll('input[name="odds"], input[name="fixed"]')) radio.addEventListener('change', render);
     $('decision-yes').onclick = () => { state.gift?.decide(true); state.decision = null; render(); };
     $('decision-no').onclick = () => { state.gift?.decide(false); state.decision = null; render(); };
     $('esp-reinstall').onclick = () => onEspInstall();

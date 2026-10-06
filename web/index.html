@@ -57,16 +57,26 @@
       <label class="choice"><input type="radio" name="mode" value="ram-dump">
         <div><b>Volcado completo</b><span>Equipo, cajas, Pokédex y entrenador, leídos de la RAM. Dura unos minutos.</span></div></label>
       <label class="choice" id="shiny-choice"><input type="radio" name="mode" value="shiny-hunting" disabled>
-        <div><b>Tarjeta Shiny Hunting <small class="tag">modifica el juego</small></b><span id="shiny-desc"></span>
-          <div class="odds" id="odds-row" hidden>Probabilidad
-            <select id="shiny-odds">
-              <option value="">Original: 1/1024 que sube con la cadena hasta 1/64</option>
-              <option value="toggle">La tecla R activa/desactiva «siempre shiny»</option>
-              <option value="64">Fija 1/64</option><option value="32">Fija 1/32</option><option value="16">Fija 1/16</option>
-              <option value="8">Fija 1/8</option><option value="4">Fija 1/4</option><option value="2">Fija 1/2</option>
-              <option value="1">Siempre shiny (1/1)</option>
-            </select></div></div></label>
+        <div><b>Tarjeta Shiny Hunting <small class="tag">modifica el juego</small></b><span id="shiny-desc"></span></div></label>
     </div>
+    <fieldset class="odds" id="odds-panel" hidden>
+      <legend>Probabilidad shiny</legend>
+      <div class="seg">
+        <label><input type="radio" name="odds" value="" checked><b>Original</b><small>1/1024, sube con la cadena hasta 1/64</small></label>
+        <label><input type="radio" name="odds" value="toggle"><b>R alterna</b><small>R activa o desactiva «siempre shiny»</small></label>
+        <label><input type="radio" name="odds" value="fixed"><b>Fija</b><small>Siempre la misma, sin cadena</small></label>
+        <label><input type="radio" name="odds" value="1"><b>Siempre shiny</b><small>Todo salvaje sale shiny</small></label>
+      </div>
+      <div class="chips" id="fixed-chips" hidden>
+        <span>1 de cada</span>
+        <label><input type="radio" name="fixed" value="64" checked><span>64</span></label>
+        <label><input type="radio" name="fixed" value="32"><span>32</span></label>
+        <label><input type="radio" name="fixed" value="16"><span>16</span></label>
+        <label><input type="radio" name="fixed" value="8"><span>8</span></label>
+        <label><input type="radio" name="fixed" value="4"><span>4</span></label>
+        <label><input type="radio" name="fixed" value="2"><span>2</span></label>
+      </div>
+    </fieldset>
     <div class="row"><button id="start">Empezar</button><button class="quiet" id="stop" hidden>Parar</button></div>
     <p class="status" id="dump-status" aria-live="polite"></p>
     <p class="hint" id="dump-hint"></p>
@@ -79,7 +89,7 @@
       <li>Pulsa <b>Empezar</b> aquí.</li>
       <li>En la Switch, en el menú principal del juego: <b>MYSTERY GIFT → WONDER CARDS → FRIEND</b> y elige <b>GBLINK</b>.</li>
       <li>Mantén esta pestaña <b>visible</b> y la Switch cerca de la placa.</li>
-      <li class="card-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) en la planta de arriba de un Centro Pokémon. El efecto dura <b>hasta cerrar o reiniciar el juego</b>: tras reiniciar, vuelve a hablar con él. Pulsa <b>R</b> en el campo para ver tu cadena.</li>
+      <li class="card-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) en la planta de arriba de un Centro Pokémon. El efecto dura <b>hasta cerrar o reiniciar el juego</b>: tras reiniciar, vuelve a hablar con él. En el campo, <b>R</b> muestra tu cadena (o activa y desactiva «siempre shiny» si elegiste «R alterna»).</li>
     </ol>
   </section>
 
