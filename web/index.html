@@ -65,6 +65,13 @@
       <label class="choice"><input type="radio" name="mode" value="legendary-reset">
         <div><b>Tarjeta Reiniciar eventos <small class="tag">modifica tu partida</small></b><span>Permite repetir eventos de un solo uso: legendarios, fósiles, Hitmons, Eevee, Lapras, Magikarp, Snorlax y las islas de eventos (da los pases). Borra sus marcas de «ya hecho» en tu partida; si guardas, queda guardado. No hace falta calibrar.</span></div></label>
     </div>
+    <details class="calib" id="calib-box">
+      <summary id="calib-summary"></summary>
+      <p class="hint">La calibración se guarda en el navegador y <b>en la ventana donde la hiciste</b>: una ventana privada no comparte la de la normal. Si la hiciste en otra, pega aquí el informe de «Comprobar mi juego» (el que se copia con «Copiar informe») y no hace falta repetirla.</p>
+      <textarea id="calib-text" rows="4" placeholder="Pega aquí el informe (informe.json)" spellcheck="false"></textarea>
+      <div class="row"><button class="quiet" id="calib-load">Cargar informe</button><button class="quiet" id="calib-clear">Borrar calibración</button></div>
+      <p class="status" id="calib-status" aria-live="polite"></p>
+    </details>
     <fieldset class="odds" id="reset-panel" hidden>
       <legend>Qué eventos reiniciar</legend>
       <div class="seg">

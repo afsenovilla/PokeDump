@@ -100,3 +100,33 @@ export function giftEvent(calibration, { oneIn = 1 } = {}) {
         },
     };
 }
+
+// Calibración a partir del texto del informe de «Comprobar mi juego» (informe.json) o de una calibración ya guardada. Sirve para llevar la
+// calibración de una ventana a otra (la ventana privada no comparte el almacenamiento con la normal).
+export function parseCalibrationReport(text) {
+    let json;
+    try { json = JSON.parse(text); } catch { return { ok: false, error: 'no es un JSON válido' }; }
+    if (json?.found && json.gameCode) {                                  // ya es una calibración
+        const missing = REQUIRED.filter((k) => !Number.isInteger(json.found[k]));
+        return missing.length ? { ok: false, error: `faltan direcciones: ${missing.join(', ')}` } : { ok: true, data: { gameCode: json.gameCode, revision: json.revision, found: json.found, savedAt: new Date().toISOString() } };
+    }
+    const shiny = json?.rom_facts?.shiny;
+    if (!shiny?.found) return { ok: false, error: 'no parece el informe de «Comprobar mi juego» (falta rom_facts.shiny)' };
+    const cal = calibrationFrom({ found: shiny.found, problems: shiny.problems ?? [], warnings: shiny.warnings ?? [] }, { game_code: json.game_code, revision: json.revision });
+    if (!cal.ok) return { ok: false, error: cal.missing.length ? `faltan direcciones: ${cal.missing.join(', ')}` : cal.problems.length ? cal.problems.join('; ') : 'el juego no es Rojo Fuego ni Verde Hoja' };
+    return { ok: true, data: cal.data };
+}
+
+// Qué tarjetas admite una calibración (para explicárselo al usuario).
+export function calibrationSummary(calibration) {
+    if (!calibration) return null;
+    const have = (keys) => keys.every((k) => Number.isInteger(calibration.found?.[k]));
+    return {
+        shiny: true,
+        balls: supportsUltra(calibration),
+        keep: supportsKeep(calibration),
+        gifts: supportsGifts(calibration),
+        count: Object.keys(calibration.found ?? {}).length,
+        missingForAll: ['gLastUsedItem', 'AddBagItem', ...GIFT_REQUIRED].filter((k) => !have([k])),
+    };
+}
