@@ -101,7 +101,7 @@ def test_card_installs_and_game_keeps_running(one_in):
 
 
 def test_r_toggles_always_shiny():
-    """La tecla R conmuta el indicador (+2 del estado del gancho) y escribe su valor en la variable 0x8005."""
+    """R conmuta el indicador (0 ↔ 60) y el script de R, con el motor del juego, deja «Sí»/«No» en la cadena 1 del script."""
     import mgba.core
     core, mem, sym = install_card("toggle")
     STATE, HOOK = 0x0203FF60, 0x0203FC00
@@ -111,20 +111,20 @@ def test_r_toggles_always_shiny():
     mem.u32[at(0x380)] = mem.u32[sym["gMain"]]                         # CB1_Overworld := callback1 actual
     mem.u8[sym["sGlobalScriptContextStatus"]] = 2
     mem.u8[sym["gQuestLogState"]] = 0
-    var8005 = sym["gSpecialVar_0x8004"] + 2
     seen = []
-    for _ in range(3):
-        mem.u16[var8005] = 0xBEEF
-        core.set_keys(core.KEY_R) if hasattr(core, "KEY_R") else core.set_keys(1 << 8)
-        for _ in range(4):
+    for _ in range(4):
+        core.set_keys(8)
+        for _ in range(2):
             core.run_frame()
         core.set_keys()
-        for _ in range(4):
+        for _ in range(3):
             core.run_frame()
-        seen.append((mem.u16[STATE + 2], mem.u16[var8005]))
+        pointer = mem.u32[at(0x3a4)]
+        text = bytes(mem.u8[pointer:pointer + 3])
+        seen.append((mem.u16[STATE + 2], text))
         mem.u8[sym["sGlobalScriptContextStatus"]] = 2
-    assert [f for f, _ in seen] == [100, 0, 100], seen
-    assert [v for _, v in seen] == [100, 0, 100], seen
+    yes, no = bytes([0xCD, 0x6F, 0xFF]), bytes([0xC8, 0xE3, 0xFF])
+    assert seen == [(60, yes), (0, no), (60, yes), (0, no)], seen
 
 
 def test_legendary_card_clears_fought_flags():
@@ -200,3 +200,70 @@ test:
         assert after[f // 8] & (1 << (f % 8)), f"se borró la marca vecina {f:#x}"
     changed = [i for i in range(len(after)) if after[i] != set_state[i]]
     assert changed and all(i in {f // 8 for f in wanted} for i in changed)
+
+
+def run_script_context(core, mem, sym, calls=8):
+    """Llama a ScriptContext_RunScript varias veces desde el bucle principal (el juego está en el título, no en el campo)."""
+    ROUTINE_AT, DONE = 0x02030000, 0x02030FF0
+    asm = f"""
+    .arm
+    .text
+test:
+    push {{r4, lr}}
+    mov r4, #{calls}
+1:  ldr r3, ={sym['ScriptContext_RunScript'] | 1}
+    mov lr, pc
+    bx r3
+    subs r4, r4, #1
+    bne 1b
+    ldr r0, ={DONE}
+    mov r1, #1
+    str r1, [r0]
+    ldr r0, ={sym['gMain'] + 4}
+    ldr r1, ={DONE + 4}
+    ldr r1, [r1]
+    str r1, [r0]
+    pop {{r4, lr}}
+    bx lr
+    .ltorg
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+        src, obj, elf, binf = (os.path.join(tmp, n) for n in ("t.s", "t.o", "t.elf", "t.bin"))
+        open(src, "w").write(asm)
+        subprocess.run(["arm-none-eabi-as", "-mcpu=arm7tdmi", "-o", obj, src], check=True)
+        subprocess.run(["arm-none-eabi-ld", f"-Ttext={ROUTINE_AT:#x}", "-o", elf, obj], check=True, capture_output=True)
+        subprocess.run(["arm-none-eabi-objcopy", "-O", "binary", elf, binf], check=True)
+        code = open(binf, "rb").read()
+    for i, b in enumerate(code):
+        mem.u8[ROUTINE_AT + i] = b
+    mem.u32[DONE] = 0
+    mem.u32[DONE + 4] = mem.u32[sym["gMain"] + 4]
+    mem.u32[sym["gMain"] + 4] = ROUTINE_AT
+    for _ in range(10):
+        core.run_frame()
+        if mem.u32[DONE]:
+            return
+    raise AssertionError("el script no avanzó")
+
+
+def test_r_script_shows_yes_no_in_game_engine():
+    """Con el motor de scripts del juego, el script de R deja «Sí» o «No» en gStringVar1 (lockall se anula: no hay objetos en el título)."""
+    core, mem, sym = install_card("toggle")
+    HOOK = 0x0203FC00
+    at = lambda script_offset: HOOK + script_offset - 0x104
+    nm = subprocess.run(["arm-none-eabi-nm", ELF], capture_output=True, text=True).stdout
+    string_var1 = int(next(l for l in nm.splitlines() if l.endswith(" gStringVar1")).split()[0], 16)
+    mem.u32[at(0x380)] = mem.u32[sym["gMain"]]
+    mem.u8[sym["gQuestLogState"]] = 0
+    shown = []
+    for _ in range(2):
+        mem.u8[sym["sGlobalScriptContextStatus"]] = 2
+        mem.u8[at(0x3a1)] = 0
+        core.set_keys(8)
+        for _ in range(2):
+            core.run_frame()
+        core.set_keys()
+        core.run_frame()
+        run_script_context(core, mem, sym)
+        shown.append(bytes(mem.u8[string_var1:string_var1 + 3]))
+    assert shown == [bytes([0xCD, 0x6F, 0xFF]), bytes([0xC8, 0xE3, 0xFF])], shown

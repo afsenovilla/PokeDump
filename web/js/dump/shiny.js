@@ -152,8 +152,8 @@ function patchThreshold(script, oneIn) {
     script.set(out, at);
 }
 
-// Modo «R alterna siempre shiny»: la tecla R conmuta un indicador (halfword en +2 del estado del gancho, 0 o 100) y el umbral pasa a
-// `((min(cadena, 30) + 2) << 5) | (indicador << 16)`: con el indicador a 100 siempre es ≥ 65536, así que todo salvaje sale shiny.
+// Modo «R alterna siempre shiny»: la tecla R conmuta un indicador (halfword en +2 del estado del gancho, 0 o 60) y el umbral pasa a
+// `((min(cadena, 30) + 2) << 5) | (indicador << 16)`: con el indicador no nulo siempre es ≥ 65536, así que todo salvaje sale shiny.
 // Para hacer sitio: el umbral deja de exigir que la especie sea la del encuentro anterior (la cadena cuenta para cualquier
 // especie) y el gestor de R ya no comprueba sLockFieldControls ni muestra la especie. Todas las posiciones son del script de RAM.
 export const SHINY_TOGGLE = 'toggle';
@@ -164,6 +164,13 @@ function patchHalfwords(script, at, expected, replacement, what) {
     }
     replacement.forEach((w, i) => { script[at + 2 * i] = w & 0xff; script[at + 2 * i + 1] = w >> 8; });
 }
+// Mensaje de R: «Siempre shiny: Sí/No». El indicador vale 0 (No) o 60 (Sí) y el gestor de R deja en el `bufferstring` del script de R un
+// puntero a «No» o, restándole el indicador, a «Sí». Posiciones en el script de RAM; el gancho está en 0x0203FC00 + (pos − 0x104).
+const HOOK_RAM = 0x0203fc00, HOOK_FROM = 0x104, STATE_RAM = 0x0203ff60;
+const ramAt = (pos) => HOOK_RAM + pos - HOOK_FROM;
+const R_SCRIPT = 0x39c, R_OPERAND = 0x3a4, R_MESSAGE_TEXT = 0x3b2, R_NO = 0x3c4, R_YES = 0x388;
+const RTEXT_STEP = R_NO - R_YES, RSTATE_BACK = STATE_RAM - ramAt(R_OPERAND), RTEXT_NO_AT = R_NO - R_OPERAND;
+
 function patchToggle(script) {
     const at = (file) => file - SCRIPT_AT;
     // Umbral: movs r2,#0 / cmp r0,r1 / bne / ldrh r2,[r4,#4] / cmp r2,#30 / bls / movs r2,#30 / adds r2,#2 / lsls r2,r2,#5
@@ -183,13 +190,28 @@ function patchToggle(script) {
         0x486d, 0x7800, 0x2802, 0xd208, 0x4871, 0x88a1, 0x8041, 0x88e1, 0x8081], [
         0x4875, 0x7800, 0x2802, 0xd110,           // ldr r0,=sGlobalScriptContextStatus ; ldrb ; cmp #2 ; bne fin   (antes: bloqueo del campo)
         0x486f, 0x7800, 0x2802, 0xd20c,           // ldr r0,=gQuestLogState ; ldrb ; cmp #2 ; bcs fin
-        0x8861, 0x2264, 0x4051, 0x8061,           // ldrh r1,[r4,#2] ; movs r2,#100 ; eors r1,r2 ; strh r1,[r4,#2]   conmuta el indicador (0 ↔ 100)
-        0x4871,                                   // ldr r0,=gSpecialVar_0x8004
-        0x8041, 0x46c0, 0x46c0, 0x46c0,           // strh r1,[r0,#2] (var 0x8005 = indicador) ; nop ×3
+        0x8861, 0x2200 | RTEXT_STEP, 0x4051, 0x8061,   // ldrh r1,[r4,#2] ; movs r2,#60 ; eors r1,r2 ; strh r1,[r4,#2]   conmuta el indicador (0 ↔ 60)
+        0x0020, 0x3800 | RSTATE_BACK,                  // movs r0,r4 ; subs r0,#K    r0 = dirección del puntero del `bufferstring`
+        0x1a43, 0x3300 | RTEXT_NO_AT,                  // subs r3,r0,r1 ; adds r3,#c  r3 = texto «No» − indicador (= «Sí» si está activo)
+        0x6003,                                        // str r3,[r0]                 el script mostrará «Sí» o «No»
     ], 'gestor de R');
+    // Script de R (callnative lo escribe SHINY_SLOTS en 0x39d): lockall ; bufferstring 0,«No» ; message ; waitmessage ; waitbuttonpress ; closemessage ; releaseall ; end
+    script.fill(0xff, R_SCRIPT + 5, 0x3c8);
+    let o = R_SCRIPT + 5;
+    script[o++] = 0x69;
+    script[o++] = 0x85; script[o++] = 0x00;
+    put32(script, o, ramAt(R_NO)); o += 4;
+    script[o++] = 0x67;
+    put32(script, o, ramAt(R_MESSAGE_TEXT)); o += 4;
+    script.set([0x66, 0x6d, 0x68, 0x6b, 0x02], o); o += 5;
+    const label = [...line('Siempre shiny: '), 0xfd, 0x02, 0xff];
+    if (o !== R_MESSAGE_TEXT || R_MESSAGE_TEXT + label.length > R_NO) throw new Error('el script de R no cabe');
+    script.set(label, R_MESSAGE_TEXT);
+    script.set([...line('No'), 0xff], R_NO);
+    script.set([...line('Sí'), 0xff, 0xff], R_YES);
 }
 
-const TOGGLE_LINES = ['R activa/desactiva el 100%', 'shiny (muestra 100% o 0%).', 'Habla con el repartidor del', 'CENTRO POKéMON.'];
+const TOGGLE_LINES = ['R activa o desactiva el', 'SIEMPRE SHINY (dice Sí o No).', 'Habla con el repartidor del', 'CENTRO POKéMON.'];
 const fixedLines = (oneIn) => (oneIn === 1
     ? ['Todos los POKéMON salvajes', 'salen shiny.', 'Habla con el repartidor del', 'CENTRO POKéMON.']
     : ['Los POKéMON salvajes salen', `shiny 1 de cada ${oneIn}.`, 'Habla con el repartidor del', 'CENTRO POKéMON.']);
@@ -217,14 +239,13 @@ export function buildShinyPayload(found, game, { text = SHINY_TEXT_ES, oneIn = n
 
     if (text) {
         // Textos de los mensajes del script (mismo espacio; el resto se rellena con 0xFF)
-        writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', toggle ? 'R: todo shiny.' : oneIn ? `Shiny 1/${oneIn}.` : 'R muestra la cadena.'));
+        writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', toggle ? 'R: siempre shiny.' : oneIn ? `Shiny 1/${oneIn}.` : 'R muestra la cadena.'));
         writeText(script, 0x92, 0xc8 - 0x92, message('Este regalo no funciona con', 'esta versión del juego.'));
-        const chain = toggle
-            ? [...line('Todo shiny: '), 0xfd, 0x03, ...line('%'), 0xff]            // {STR_VAR_2} = indicador: 100 activo, 0 no
-            : [...line('Cadena '), 0xfd, 0x02, ...line(': '), 0xfd, 0x03, 0xff];
-        if (!toggle && chain.length !== 14) throw new Error('mensaje de cadena de tamaño inesperado');
-        if (toggle) script.fill(0xff, 0x3b8, 0x3c8);
-        script.set(chain, 0x3b8);
+        if (!toggle) {
+            const chain = [...line('Cadena '), 0xfd, 0x02, ...line(': '), 0xfd, 0x03, 0xff];
+            if (chain.length !== 14) throw new Error('mensaje de cadena de tamaño inesperado');
+            script.set(chain, 0x3b8);
+        }
         // Wonder Card: título, subtítulo, cuatro líneas y créditos
         writeText(card, 10, 40, [...line(text.title), 0xff]);
         writeText(card, 50, 40, [...line(text.subtitle), 0xff]);
