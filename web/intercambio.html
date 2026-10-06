@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PokeDump · Intercambiar desde una portátil</title>
+<meta name="description" content="Intercambia Pokémon en directo entre una portátil Android (Retroid, Anbernic con Android) y Rojo Fuego / Verde Hoja de la Switch, con mgba_LDN y una ESP32-S3, sin sacar la partida a un ordenador.">
+<link rel="icon" href="favicon.ico">
+<link rel="stylesheet" href="pokedump.css">
+</head>
+<body>
+<main>
+  <h1>Intercambiar desde una portátil</h1>
+  <p class="sub">Intercambia Pokémon <strong>en directo</strong> entre tu portátil Android (Retroid o Anbernic con Android) y Rojo Fuego /
+     Verde Hoja de la Switch. <strong>La partida se queda en la portátil</strong>: no pasa por ningún ordenador.</p>
+  <nav class="top">
+    <a href="./">← Volcar mi partida</a>
+    <a href="https://github.com/afsenovilla/PokeDump/blob/main/docs/INTERCAMBIO_PORTATIL.md">Esta guía en el repositorio</a>
+  </nav>
+
+  <p class="notice warn">Esto no lo hace PokeDump, sino <a href="https://github.com/Gr3nSkyDragon/mgba_LDN">mgba_LDN</a>, un mGBA modificado
+     <strong>no oficial</strong> cuyo autor dice que su función nueva está hecha con código generado por IA. Esta guía sigue su
+     documentación y <strong>no está probada con una portátil real</strong>. Si algo no coincide con lo que ves, manda su página de releases.
+     PokeDump solo sirve aquí para preparar la placa.</p>
+
+  <section class="card">
+    <h2>Qué hace falta</h2>
+    <ul class="plain">
+      <li>Una <b>ESP32-S3</b> (la misma que usas con PokeDump) con el firmware GB-Link Switch LDN y tus claves guardadas.</li>
+      <li>Una portátil <b>con Android</b>: Retroid con Android o Anbernic con Android. Los Anbernic con Linux (ArkOS, muOS, Knulli…) <b>no valen</b>: no hay versión del emulador para ellos.</li>
+      <li>Un cable <b>USB-C a USB-C</b> para unir la ESP32 a la portátil.</li>
+      <li>Rojo Fuego o Verde Hoja <b>en español</b> en la Switch, y la ROM del mismo juego e idioma en la portátil.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">1</span> Preparar la placa <small class="fine">(una vez, en el ordenador)</small></h2>
+    <ol class="steps">
+      <li>Abre la <a href="./">página principal de PokeDump</a> en Chrome o Edge.</li>
+      <li>En el paso 1: <b>Conectar</b>, <b>Instalar firmware</b> y suelta tu <code>prod.keys</code>. Las claves se guardan en la placa y no se suben a ningún sitio.</li>
+      <li>Desconecta la placa del ordenador.</li>
+    </ol>
+    <p class="fine"><b>Ojo con el firmware.</b> Las últimas versiones de mgba_LDN mencionan un «Compact Firmware Flasher» y funciones nuevas dentro del firmware
+       de la ESP32. Lee su README antes de seguir. Si pide su firmware propio, instala ese y vuelve a guardar las claves. Con el firmware de GB-Link la
+       documentación dice que funciona, y una ESP32-S3 es la placa que usa su autor.</p>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">2</span> Instalar el emulador en la portátil</h2>
+    <ol class="steps">
+      <li>Descarga la APK desde <a href="https://github.com/Gr3nSkyDragon/mgba_LDN/releases">las releases de mgba_LDN</a> e instálala.</li>
+      <li>Copia la ROM y <b>tu partida</b> a la portátil, como con cualquier emulador. <b>Haz copia del <code>.sav</code></b> antes de intercambiar nada.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3</span> Conectar la placa a la portátil</h2>
+    <ol class="steps">
+      <li>Une la ESP32 a la portátil con el cable USB-C a USB-C.</li>
+      <li>Abre el juego en mgba_LDN. Menú <b>☰</b> (arriba a la derecha) → <b>Wireless Adapter</b> → <b>ESP32</b>.</li>
+      <li>Si Android pregunta si la app puede usar el dispositivo USB, acepta.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">4</span> Intercambiar</h2>
+    <ol class="steps">
+      <li><b>Switch:</b> en el Centro Pokémon, planta de arriba. <b>Usa la ventana de la derecha</b> (intercambio), <b>no la de la izquierda</b> (Sala Inalámbrica). Hazte <b>líder</b> del grupo: la Switch hospeda siempre y el emulador solo puede unirse.</li>
+      <li><b>Portátil:</b> ve también a la planta de arriba y habla con la encargada de la ventana de la derecha, igual que en una consola real. Se unirá al grupo de la Switch.</li>
+      <li>Acepta que se una el otro jugador y siéntate en la <b>mesa de intercambio</b>, en los dos lados.</li>
+      <li>Elegid los Pokémon y confirmad. El intercambio es el normal del juego.</li>
+      <li>Al terminar, <b>guarda</b> en los dos juegos.</li>
+    </ol>
+    <p class="fine"><b>No uses el avance rápido (turbo)</b> del emulador, ni en la preparación ni en el intercambio: según el autor, se rompe.</p>
+  </section>
+
+  <section class="card">
+    <h2>Si algo falla</h2>
+    <ul class="plain">
+      <li>El juego da un <b>error de comunicación</b> y vuelve al último guardado. No debería estropear la partida, pero por eso conviene la copia previa. Cierra la sala en la Switch, vuelve a entrar y repite.</li>
+      <li>Si la placa no aparece en el emulador, desconecta y vuelve a conectar el cable, y prueba el otro puerto USB-C de la portátil si tiene dos.</li>
+      <li>Si la Switch no ve a la portátil, comprueba que las claves de la placa son de <b>tu</b> consola (paso 1).</li>
+      <li>Mantén la ESP32 cerca de la Switch, a unos 40-60 cm y sin objetos en medio.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Qué se modifica</h2>
+    <p><b>El intercambio escribe las dos partidas</b>, la de la Switch y la de la portátil, porque el juego guarda lo recibido. Es un intercambio legítimo
+       dentro del juego, pero ya no es solo lectura. El volcado de la <a href="./">página principal</a> sí lo es, y su <code>.sav</code> sirve de copia de
+       seguridad de la Switch.</p>
+  </section>
+
+  <p class="fine">Créditos: <a href="https://github.com/Gr3nSkyDragon/mgba_LDN">mgba_LDN</a> y <a href="https://mgba.io">mGBA</a> (MPL-2.0);
+     <a href="https://github.com/GB-Link/GB-Link-Switch-LDN">GB-Link Switch LDN</a> (AGPL-3.0), de donde viene el firmware de la placa.
+     No está afiliado a Nintendo ni a The Pokémon Company.</p>
+</main>
+</body>
+</html>
