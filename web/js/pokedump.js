@@ -493,7 +493,7 @@ function renderDump() {
         ? `Salvajes, estáticos y regalos (iniciales, fósiles, Hitmon, Eevee, Lapras, huevos…) shiny, al equipo o a las cajas. Calibrada para ${describeGameCode(calibration.gameCode)}. Opcionalmente reinicia un evento (fósiles, Hitmon, Eevee…). Va aparte de la tarjeta de bolas y no lleva la tecla R.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» (si ya lo hiciste, repítelo: ahora busca tres direcciones más).';
     $('ultra-desc').textContent = supportsUltra(calibration)
-        ? `La ULTRA BALL (o las que elijas) captura siempre, como una MASTER BALL, mientras el juego esté abierto. Calibrada para ${describeGameCode(calibration.gameCode)}. Cambia el juego en memoria; el Pokémon se registra en la bola que lanzaste.`
+        ? `La ULTRA BALL (o las que elijas) captura siempre, como una MASTER BALL, mientras el juego esté abierto. También la SAFARI BALL del Parque Safari (esas siguen contando en el contador del parque). Calibrada para ${describeGameCode(calibration.gameCode)}. Cambia el juego en memoria; el Pokémon se registra en la bola que lanzaste.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» (si ya lo hiciste, repítelo: ahora busca una dirección más).';
     $('shiny-desc').textContent = calibration
         ? `Probabilidad shiny mucho más alta en combates salvajes, con cadena por especie. Calibrada para ${describeGameCode(calibration.gameCode)}. No es de solo lectura: cambia el juego hasta que lo cierres o reinicies.`

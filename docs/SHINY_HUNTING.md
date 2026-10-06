@@ -130,3 +130,8 @@ La tarjeta (código y textos originales) es del GB-Link Team, GPL-3.0. Los patro
 ## Regalos shiny + reiniciar un evento
 
 La tarjeta de Regalos shiny puede, además, reiniciar **un** evento (fósiles, Hitmons, Eevee, Lapras, Magikarp, legendarios o Snorlax): se elige en el panel «Reiniciar un evento a la vez». Solo uno porque el script de la tarjeta no tiene más hueco (los `clearflag` van donde estaba el gestor de R); las islas (pases) no caben, y para varios eventos o las islas hay que usar la tarjeta Reiniciar eventos aparte.
+
+
+### Parque Safari
+
+La tarjeta de Ultra Ball también convierte la SAFARI BALL (`gLastUsedItem` = 5, que escribe `HandleAction_SafariZoneBallThrow`) en Master Ball al lanzarla, y el Pokémon queda registrado en la Safari Ball. Las Safari Ball no salen de la mochila sino del contador del parque (`gNumSafariBalls`), cuya dirección no está en la calibración, así que ese contador sigue bajando una por lanzamiento (30 al entrar).

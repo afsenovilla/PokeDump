@@ -152,7 +152,7 @@ test('tarjeta Ultra Ball = Master Ball: función del gancho y bolas elegidas', a
     for (const [balls, n] of Object.entries(ULTRA_BALL_CHOICES)) {
         const { script, card } = buildUltraBallPayload(found, { gameCode: 'BPGS', revision: 10 }, { balls });
         const w = (at) => script[at] | (script[at + 1] << 8);
-        assert.equal(w(0x1e0), 0xb500); assert.equal(w(0x210), 0x2a00 | n); assert.equal(w(0x21a), 0xbd00);
+        assert.equal(w(0x1e0), 0xb500); assert.equal(w(0x210), 0x2a00 | n); assert.equal(w(0x214), 0x2905); assert.equal(w(0x21e), 0xbd00);   // …; cmp r1,#5 (Safari Ball)
         assert.equal(u32(script, 0x340), 0x02023d68);                   // gLastUsedItem en el hueco que lee la función
         assert.equal(card.length, 332);
     }
