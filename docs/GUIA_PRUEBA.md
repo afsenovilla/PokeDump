@@ -26,15 +26,15 @@ Para conocer la versión exacta de tu juego sin instalar nada, usa antes
 Una partida nueva en **otro usuario** de la Switch no toca tu partida buena:
 1. *Ajustes → Usuarios → Añadir usuario* (puedes borrarlo luego).
 2. Abre el juego con ese usuario, empieza una partida nueva, elige inicial y **guarda**.
-3. Para que aparezca **MYSTERY GIFT** en el menú principal hay que activarlo en el juego (en GB-Link
+3. Para que aparezca **REGALO MIST.** (MYSTERY GIFT) en el menú principal hay que activarlo en el juego (en GB-Link
    lo describen como responder el cuestionario de la Tienda Pokémon con *LINK TOGETHER WITH ALL*;
-   en español será la opción equivalente) y **guardar**. Si ves MYSTERY GIFT en el menú principal,
+   en español será la opción equivalente) y **guardar**. Si ves REGALO MIST. en el menú principal,
    ya está.
 
 ## 4. Prueba 1 — la sonda (una sola pasada)
 1. En la web, paso 2, deja marcada **«Sonda»** y pulsa **Empezar**.
-2. En la Switch, desde el menú principal del juego: **MYSTERY GIFT → WONDER CARDS → FRIEND →
-   GBLINK**.
+2. En la Switch, desde el menú principal del juego: **REGALO MIST. → TARJETAS MISTERIOSAS → OTROS ENTRENADORES →
+   GBLINK** (en inglés: MYSTERY GIFT → WONDER CARDS → FRIEND).
 3. La web debe mostrar algo como *«Sonda: Rojo Fuego (Spanish), revisión 10. Punteros correctos.»*
    y una línea con direcciones. La Switch vuelve sola al menú con un mensaje de error de
    comunicación o de «copiado»: es normal, no se guardó nada.
@@ -61,7 +61,7 @@ volcado no escribe nada, pero tenla guardada (copia en la nube de Switch Online 
 ## Si algo falla
 Cuéntame: el mensaje exacto de la web, el *registro* (se puede copiar de la propia página), qué
 mostró la Switch y en qué paso pasó. Casos habituales:
-- **«unsupported»/«cant-accept»:** el juego no es FireRed/LeafGreen o aún no tiene MYSTERY GIFT.
-- **Se cae el enlace a medias:** vuelve a entrar por FRIEND → GBLINK sin cerrar la pestaña; el volcado
+- **«unsupported»/«cant-accept»:** el juego no es FireRed/LeafGreen o aún no tiene REGALO MIST..
+- **Se cae el enlace a medias:** vuelve a entrar por OTROS ENTRENADORES → GBLINK sin cerrar la pestaña; el volcado
   sigue por donde iba.
 - **«volcado parcial»:** no se localizó el PC; recibirás el JSON sin cajas. Pásame la línea de la sonda.

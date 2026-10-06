@@ -418,12 +418,12 @@ function resultView(result) {
         case 'sent': return { headline: `Tarjeta enviada a ${who}.`, hint: 'Cuando la Switch termine de guardarla, habla con el repartidor (el de verde) en la planta de arriba de un Centro Pokémon. Dura hasta cerrar o reiniciar el juego; pulsa R en el campo para ver tu cadena.', tone: 'good' };
         case 'had-card': return { headline: 'La Switch ya tenía esta tarjeta y no se ha vuelto a enviar.', hint: 'Si quieres enviarla otra vez, pulsa Empezar de nuevo y elige enviarla.', tone: 'warn' };
         case 'kept-card': return { headline: 'No se ha enviado: en la Switch decidiste conservar la tarjeta que ya tenías.', hint: '', tone: 'warn' };
-        case 'cant-accept': return { headline: 'La Switch no pudo aceptar el enlace.', hint: 'Comprueba que es Rojo Fuego o Verde Hoja y que MYSTERY GIFT está activado en el juego.', tone: 'warn' };
+        case 'cant-accept': return { headline: 'La Switch no pudo aceptar el enlace.', hint: 'Comprueba que es Rojo Fuego o Verde Hoja y que REGALO MIST. (MYSTERY GIFT) está activado en el juego.', tone: 'warn' };
         case 'unsupported': return { headline: `Este juego no es compatible (${describeGameCode(result.game?.gameCode ?? '')}).`, hint: result.event?.id === SHINY_EVENT_ID ? 'La tarjeta se calibró con otra ROM distinta de la de esta Switch: vuelve a pasar tu NSP por «Comprobar mi juego».' : 'PokeDump funciona con Rojo Fuego y Verde Hoja.', tone: 'warn' };
         case 'lost':
             return state.files.length
                 ? { headline: 'La partida llegó entera antes de que se cortase el enlace.', hint: 'Descarga los ficheros. La Switch puede mostrar un error de comunicación; su partida está como estaba.', tone: 'good' }
-                : { headline: 'Se cortó el enlace con la Switch antes de terminar.', hint: 'Vuelve a entrar por MYSTERY GIFT → WONDER CARDS → FRIEND → GBLINK sin cerrar esta pestaña: el volcado sigue por donde iba.', tone: 'warn' };
+                : { headline: 'Se cortó el enlace con la Switch antes de terminar.', hint: 'Vuelve a entrar por REGALO MIST. → TARJETAS MISTERIOSAS → OTROS ENTRENADORES → GBLINK sin cerrar esta pestaña: el volcado sigue por donde iba.', tone: 'warn' };
         case 'error': return { headline: result.message ?? 'Falló el intercambio.', hint: '', tone: 'warn' };
         default: return { headline: '', hint: '', tone: '' };
     }
@@ -446,7 +446,7 @@ function dumpView() {
         case 'deciding': case 'asking': return { headline: 'La Switch tiene que decidir…', hint: 'Mira la pantalla de la Switch o responde aquí abajo.', tone: 'good', busy: true };
         case 'sending': return { headline: 'Enviando la tarjeta…', hint: 'La Switch muestra «Comunicando…». No cierres esta pestaña.', tone: 'good', busy: true };
         case 'closing': return { headline: 'Terminando el enlace…', hint: '', tone: 'good', busy: true };
-        default: return { headline: 'Grupo abierto. Esperando a la Switch…', hint: 'En la Switch: MYSTERY GIFT → WONDER CARDS → FRIEND → GBLINK.', tone: 'good', busy: true };
+        default: return { headline: 'Grupo abierto. Esperando a la Switch…', hint: 'En la Switch: REGALO MIST. → TARJETAS MISTERIOSAS → OTROS ENTRENADORES → GBLINK.', tone: 'good', busy: true };
     }
 }
 

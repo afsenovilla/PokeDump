@@ -27,7 +27,7 @@ con el idioma. En vez de tablas fijas, PokeDump las **busca en tu propia ROM**:
 
 1. Pasa tu NSP por «Comprobar mi juego» (una sola vez por versión de juego y navegador).
 2. En la página principal conecta la placa, elige **Tarjeta Shiny Hunting** y pulsa **Empezar**.
-3. En la Switch: **MYSTERY GIFT → WONDER CARDS → FRIEND → GBLINK** y acepta la tarjeta.
+3. En la Switch: **REGALO MIST. → TARJETAS MISTERIOSAS → OTROS ENTRENADORES → GBLINK** (en inglés: MYSTERY GIFT → WONDER CARDS → FRIEND) y acepta la tarjeta.
 4. Cuando la guarde, habla con el **repartidor** (el de verde) en la planta de arriba de un Centro Pokémon. El efecto dura
    hasta cerrar o reiniciar el juego: tras reiniciar, vuelve a hablar con él. **R** en el campo muestra tu cadena.
 
