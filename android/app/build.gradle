@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.afsenovilla.pokedump'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.afsenovilla.pokedump'
+        minSdk 24
+        targetSdk 34
+        versionCode (project.findProperty('versionCode') ?: '1').toInteger()
+        versionName (project.findProperty('versionName') ?: '1.0.0')
+    }
+
+    signingConfigs {
+        release {
+            // Llave del proyecto, pública a propósito: sirve para que las versiones nuevas se instalen encima de las anteriores.
+            storeFile file('../keystore/pokedump.jks')
+            storePassword 'pokedump'
+            keyAlias 'pokedump'
+            keyPassword 'pokedump'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    sourceSets {
+        main {
+            // La página web del repositorio (../web) va dentro del APK tal cual; el shim de USB está en src/main/assets/android.
+            assets.srcDirs = ['src/main/assets', '../../web']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'com.github.mik3y:usb-serial-for-android:3.8.0'
+}

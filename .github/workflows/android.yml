@@ -1,0 +1,68 @@
+name: Android
+
+# Compila el APK de PokeDump (android/) y lo publica como release. Se lanza a mano (Actions → Android → Run workflow, con el número de
+# versión) o al subir una etiqueta v*.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión (por ejemplo 1.0.0)'
+        required: true
+        default: '1.0.0'
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tests del shim de USB
+        run: node --test tests/android/*.test.mjs
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Versión
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="${{ inputs.version }}"; fi
+          echo "name=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$(( $(date +%s) / 60 ))" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar el APK
+        working-directory: android
+        run: gradle --no-daemon assembleRelease -PversionName="${{ steps.version.outputs.name }}" -PversionCode="${{ steps.version.outputs.code }}"
+
+      - name: Preparar el archivo
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk "PokeDump-${{ steps.version.outputs.name }}.apk"
+          sha256sum "PokeDump-${{ steps.version.outputs.name }}.apk" | tee "PokeDump-${{ steps.version.outputs.name }}.apk.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PokeDump-apk
+          path: PokeDump-*.apk
+
+      - name: Publicar la release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.name }}
+          name: PokeDump ${{ steps.version.outputs.name }} (Android)
+          target_commitish: ${{ github.sha }}
+          body_path: docs/ANDROID_RELEASE.md
+          files: |
+            PokeDump-${{ steps.version.outputs.name }}.apk
+            PokeDump-${{ steps.version.outputs.name }}.apk.sha256
