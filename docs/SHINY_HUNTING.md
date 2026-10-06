@@ -54,6 +54,9 @@ Reutiliza el instalador y el gancho de V-Blank, pero con una sola función. En c
 2. Si `gLastUsedItem` es una de las bolas elegidas (Ultra 2, Super 3, Poké 4), anota cuál era y la cambia por Master Ball (1) antes de
    que el combate calcule la captura (`Cmd_handleballthrow`). La mochila ya descontó la bola que elegiste (usa `gSpecialVar_ItemId`).
 
+Opción «No gastar la bola»: al convertirla, el gancho llama a `AddBagItem(bola, 1)` y la mochila recupera la bola que acaba de gastar
+(el juego la descuenta al elegirla en la mochila, antes de lanzarla; hay que tener al menos una). Se probó con `AddBagItem`/`RemoveBagItem`
+reales. No se mete la bola en «Objetos clave» porque la mochila de combate no muestra ese bolsillo: no se podría lanzar desde ahí.
 Contra Pokémon de entrenador el juego bloquea la bola como siempre. Efectos secundarios: el mensaje y la animación del lanzamiento pueden
 mostrar la Master Ball; y si tras un lanzamiento fallido usas una Master Ball de verdad en el mismo combate, quedaría anotada como la bola
 anterior. Necesita más direcciones (`gLastUsedItem`), así que hay que repetir «Comprobar mi juego» una vez. Probado en el emulador con las

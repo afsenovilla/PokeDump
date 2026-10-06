@@ -102,7 +102,7 @@ for (const build of ['pokefirered_rev1', 'pokefirered', 'pokeleafgreen_rev1']) {
         const nm = execFileSync('arm-none-eabi-nm', [`${PRET}/${build}.elf`], { maxBuffer: 1 << 28 }).toString();
         const sym = Object.fromEntries(nm.split('\n').map((l) => l.split(' ')).filter((p) => p.length === 3).map((p) => [p[2], parseInt(p[0], 16)]));
         const alias = { GetMonData: 'GetMonData3' };
-        const thumb = new Set(['Random', 'GetMonData', 'SetMonData', 'CalculateMonStats', 'ScriptContext_SetupScript', 'CB1_Overworld', 'CB2_Overworld', 'SetActionsAndBattlersTurnOrder', 'DismissMapNamePopup']);
+        const thumb = new Set(['Random', 'GetMonData', 'SetMonData', 'CalculateMonStats', 'ScriptContext_SetupScript', 'CB1_Overworld', 'CB2_Overworld', 'SetActionsAndBattlersTurnOrder', 'DismissMapNamePopup', 'AddBagItem']);
         for (const [name, value] of Object.entries(found)) assert.equal(value, thumb.has(name) ? (sym[alias[name] ?? name] | 1) >>> 0 : sym[name], name);
     });
 }
@@ -156,6 +156,9 @@ test('tarjeta Ultra Ball = Master Ball: función del gancho y bolas elegidas', a
         assert.equal(u32(script, 0x340), 0x02023d68);                   // gLastUsedItem en el hueco que lee la función
         assert.equal(card.length, 332);
     }
+    const kept = buildUltraBallPayload({ ...found, AddBagItem: 0x0809a099 }, { gameCode: 'BPGS', revision: 10 }, { keep: true });
+    assert.equal(u32(kept.script, 0x36c), 0x0809a099);
+    assert.throws(() => buildUltraBallPayload(found, { gameCode: 'BPGS', revision: 10 }, { keep: true }), /AddBagItem/);
     assert.throws(() => buildUltraBallPayload({}, { gameCode: 'BPGS', revision: 10 }), /faltan direcciones/);
     assert.throws(() => buildUltraBallPayload(found, { gameCode: 'BPGS', revision: 10 }, { balls: 'x' }), /no admitidas/);
 });

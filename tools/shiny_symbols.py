@@ -15,6 +15,7 @@ FUNCS = {
     'CalculateMonStats': 'CalculateMonStats', 'ScriptContext_SetupScript': 'ScriptContext_SetupScript',
     'CB1_Overworld': 'CB1_Overworld', 'CB2_Overworld': 'CB2_Overworld',
     'SetActionsAndBattlersTurnOrder': 'SetActionsAndBattlersTurnOrder', 'DismissMapNamePopup': 'DismissMapNamePopup',
+    'AddBagItem': 'AddBagItem',
 }
 VARS = {   # nombre -> símbolo de pret (dirección que se busca en la ROM destino)
     'gMain': 'gMain', 'gIntrTable': 'gIntrTable', 'gBattleMainFunc': 'gBattleMainFunc',

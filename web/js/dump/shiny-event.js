@@ -65,14 +65,16 @@ export const ULTRA_EVENT_ID = 'ultra-master';
 // ¿Tiene la calibración guardada todo lo que necesita la tarjeta de bolas? (las calibraciones anteriores no tenían gLastUsedItem)
 export const supportsUltra = (calibration) => Boolean(calibration) && ULTRA_REQUIRED.every((k) => Number.isInteger(calibration.found?.[k]));
 
-export function ultraEvent(calibration, { balls = 'ultra' } = {}) {
+export const supportsKeep = (calibration) => supportsUltra(calibration) && Number.isInteger(calibration.found?.AddBagItem);
+
+export function ultraEvent(calibration, { balls = 'ultra', keep = false } = {}) {
     return {
         id: ULTRA_EVENT_ID,
         kind: 'card',
-        label: 'Ultra Ball = Master Ball',
+        label: keep ? 'Ultra Ball = Master Ball (no se gasta)' : 'Ultra Ball = Master Ball',
         build(game) {
             if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
-            return buildUltraBallPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { balls });
+            return buildUltraBallPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { balls, keep });
         },
     };
 }
