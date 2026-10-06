@@ -133,3 +133,15 @@ test('modo R alterna siempre shiny: parches del umbral y del gestor de R', async
     assert.notDeepEqual([...script], [...base]);
     assert.equal(script.length, base.length);
 });
+
+test('tarjeta Legendarios: comprobación de versión, clearflag de las cuatro marcas y evento sin calibración', async () => {
+    const { buildLegendaryPayload, LEGENDARY_FLAGS } = await import('../../web/js/dump/shiny.js');
+    const { legendaryEvent } = await import('../../web/js/dump/shiny-event.js');
+    const { card, script } = buildLegendaryPayload({ gameCode: 'BPGS', revision: 10 });
+    assert.equal(script[12], 'G'.charCodeAt(0)); assert.equal(script[24], 'S'.charCodeAt(0)); assert.equal(script[36], 10);
+    LEGENDARY_FLAGS.forEach((flag, i) => assert.deepEqual([...script.slice(0x2b + 3 * i, 0x2b + 3 * i + 3)], [0x2a, flag & 0xff, flag >> 8]));
+    assert.equal(card.length, 332);
+    assert.deepEqual(LEGENDARY_FLAGS, [0x2bc, 0x2bd, 0x2be, 0x2bf]);
+    assert.ok(legendaryEvent.build({ gameCode: 'BPRS', revision: 10 }));
+    assert.equal(legendaryEvent.build({ gameCode: 'AXVE', revision: 0 }), null);
+});

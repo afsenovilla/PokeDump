@@ -10,7 +10,7 @@ import { GiftDistribution } from './gift/distribution.js';
 import { describeGameCode } from './gift/mystery-gift.js';
 import { DUMP_EVENTS } from './dump/ramdump.js';
 import { initTrade } from './intercambio.js';
-import { SHINY_EVENT_ID, loadCalibration, shinyEvent } from './dump/shiny-event.js';
+import { LEGENDARY_EVENT_ID, SHINY_EVENT_ID, legendaryEvent, loadCalibration, shinyEvent } from './dump/shiny-event.js';
 
 const $ = (id) => document.getElementById(id);
 const CHIP_NAMES = { esp32: 'ESP32', esp32c3: 'ESP32-C3', esp32c6: 'ESP32-C6', esp32s3: 'ESP32-S3' };
@@ -310,7 +310,7 @@ function chosenOdds() {
     if (value === 'fixed') return Number(document.querySelector('input[name="fixed"]:checked')?.value) || null;
     return Number(value) || null;
 }
-const eventById = (id) => (id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
+const eventById = (id) => (id === LEGENDARY_EVENT_ID ? legendaryEvent : id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
@@ -460,6 +460,7 @@ function renderDump() {
     for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = running || (radio.value === SHINY_EVENT_ID && !calibration);
     const card = chosenMode() === SHINY_EVENT_ID;
     for (const li of document.querySelectorAll('.card-only')) li.hidden = !card;
+    for (const li of document.querySelectorAll('.legendary-only')) li.hidden = chosenMode() !== LEGENDARY_EVENT_ID;
     $('odds-panel').hidden = !(calibration && card);
     $('fixed-chips').hidden = document.querySelector('input[name="odds"]:checked')?.value !== 'fixed';
     for (const input of document.querySelectorAll('#odds-panel input')) input.disabled = running;

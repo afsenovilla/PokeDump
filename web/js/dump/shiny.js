@@ -234,3 +234,35 @@ export function buildShinyPayload(found, game, { text = SHINY_TEXT_ES, oneIn = n
     }
     return { card, script };
 }
+
+
+// Tarjeta «Legendarios»: solo script del juego, sin código nativo ni direcciones. Borra las banderas FLAG_FOUGHT_* de MEWTWO,
+// MOLTRES, ARTICUNO y ZAPDOS (0x2BC–0x2BF); al volver a cargar su mapa, el propio juego los vuelve a mostrar
+// (`call_if_unset FLAG_FOUGHT_X → clearflag FLAG_HIDE_X`). Reutiliza de la tarjeta de Shiny Hunting la comprobación de versión
+// y el mensaje final; el resto del script (que nunca llega a ejecutarse) queda sin usar.
+export const LEGENDARY_FLAGS = [0x2bc, 0x2bd, 0x2be, 0x2bf];
+const LEGENDARY_AT = 0x2b, LEGENDARY_END = 0x56;                 // hueco del script: de los loadword del arranque al mensaje final
+const LEGENDARY_CARD_ID = 0x5044, MEWTWO_ICON = 150;
+
+export function buildLegendaryPayload(game) {
+    const raw = Uint8Array.from(atob(SHINY_BASE_BASE64.replace(/\s+/g, '')), (c) => c.charCodeAt(0));
+    const card = raw.slice(0, CARD_BYTES);
+    const script = raw.slice(SCRIPT_AT);
+    if (script[LEGENDARY_AT] !== 0x0f || script[LEGENDARY_END] !== 0xbd) throw new Error('la plantilla de la tarjeta no es la esperada');
+    const code = game.gameCode;
+    script[GATE_THIRD] = code.charCodeAt(2);
+    script[GATE_LANG] = code.charCodeAt(3);
+    script[GATE_REVISION] = game.revision;
+    script.fill(0x00, LEGENDARY_AT, LEGENDARY_END);                // nop
+    LEGENDARY_FLAGS.forEach((flag, i) => script.set([0x2a, flag & 0xff, flag >> 8], LEGENDARY_AT + 3 * i));     // clearflag
+    writeText(script, 0x6a, 0x92 - 0x6a, message('Legendarios listos.', 'Reentra al mapa.'));
+    writeText(script, 0x92, 0xc8 - 0x92, message('Este regalo no funciona con', 'esta versión del juego.'));
+    card[0] = LEGENDARY_CARD_ID & 0xff; card[1] = LEGENDARY_CARD_ID >> 8;
+    card[2] = MEWTWO_ICON & 0xff; card[3] = MEWTWO_ICON >> 8;
+    writeText(card, 10, 40, [...line('LEGENDARIOS'), 0xff]);
+    writeText(card, 50, 40, [...line('MEWTWO y las aves, de nuevo'), 0xff]);
+    ['Reactiva a MEWTWO, ARTICUNO,', 'ZAPDOS y MOLTRES aunque ya', 'los hayas capturado. Habla con', 'el repartidor y vuelve a su mapa.']
+        .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
+    writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
+    return { card, script };
+}
