@@ -186,11 +186,16 @@ test('Ultra Ball + shiny: la función de las bolas ocupa el hueco de la cadena y
 test('tarjeta Reiniciar eventos: todos los grupos caben, sin banderas repetidas y con el salto de versión reubicado', async () => {
     const { buildResetPayload, RESET_GROUPS } = await import('../../web/js/dump/shiny.js');
     const all = Object.keys(RESET_GROUPS);
-    const { script, flags } = buildResetPayload({ gameCode: 'BPRS', revision: 10 }, all);
+    const { script, flags, sets, items } = buildResetPayload({ gameCode: 'BPRS', revision: 10 }, all);
     assert.equal(flags.length, new Set(flags).size);
     assert.equal(flags.length, all.reduce((n, g) => n + RESET_GROUPS[g].flags.length, 0));
-    flags.forEach((flag, i) => assert.deepEqual([...script.slice(0x2b + 3 * i, 0x2b + 3 * i + 3)], [0x2a, flag & 0xff, flag >> 8]));
-    const failBlock = 0x2b + 3 * flags.length + 10;
-    for (const at of [0x0f, 0x1b, 0x27]) assert.deepEqual([...script.slice(at, at + 4)], [failBlock & 0xff, failBlock >> 8, 0, 8]);
+    let at = 0x2b;
+    for (const flag of flags) { assert.deepEqual([...script.slice(at, at + 3)], [0x2a, flag & 0xff, flag >> 8]); at += 3; }
+    for (const flag of sets) { assert.deepEqual([...script.slice(at, at + 3)], [0x29, flag & 0xff, flag >> 8]); at += 3; }
+    for (const [id, n] of items) { assert.deepEqual([...script.slice(at, at + 5)], [0x44, id & 0xff, id >> 8, n, 0]); at += 5; }
+    assert.deepEqual(items, [[370, 1], [371, 1]]);
+    assert.deepEqual(sets, [0x84a, 0x84b, 0x2a7, 0x2a8]);
+    const failBlock = at + 10;
+    for (const gate of [0x0f, 0x1b, 0x27]) assert.deepEqual([...script.slice(gate, gate + 4)], [failBlock & 0xff, failBlock >> 8, 0, 8]);
     assert.throws(() => buildResetPayload({ gameCode: 'BPRS', revision: 10 }, ['nada']), /no admitidos/);
 });
