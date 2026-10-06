@@ -58,6 +58,8 @@
         <div><b>Volcado completo</b><span>Equipo, cajas, Pokédex y entrenador, leídos de la RAM. Dura unos minutos.</span></div></label>
       <label class="choice" id="shiny-choice"><input type="radio" name="mode" value="shiny-hunting" disabled>
         <div><b>Tarjeta Shiny Hunting <small class="tag">modifica el juego</small></b><span id="shiny-desc"></span></div></label>
+      <label class="choice"><input type="radio" name="mode" value="gift-shiny" disabled>
+        <div><b>Tarjeta Regalos shiny <small class="tag">modifica el juego</small></b><span id="gift-desc"></span></div></label>
       <label class="choice"><input type="radio" name="mode" value="ultra-master" disabled>
         <div><b>Tarjeta Ultra Ball = Master Ball <small class="tag">modifica el juego</small></b><span id="ultra-desc"></span></div></label>
       <label class="choice"><input type="radio" name="mode" value="legendary-reset">
@@ -90,7 +92,7 @@
       <div class="seg">
         <label class="ultra-opt" hidden><input type="radio" name="odds" value="none"><b>Sin shiny</b><small>Solo las bolas</small></label>
         <label class="shiny-opt"><input type="radio" name="odds" value="" checked><b>Original</b><small>1/1024, sube con la cadena hasta 1/64</small></label>
-        <label><input type="radio" name="odds" value="toggle"><b>R alterna</b><small>R activa o desactiva «siempre shiny» (dice Sí o No)</small></label>
+        <label class="toggle-opt"><input type="radio" name="odds" value="toggle"><b>R alterna</b><small>R activa o desactiva «siempre shiny» (dice Sí o No)</small></label>
         <label><input type="radio" name="odds" value="fixed"><b>Fija</b><small>Siempre la misma, sin cadena</small></label>
         <label><input type="radio" name="odds" value="1"><b>Siempre shiny</b><small>Todo salvaje sale shiny</small></label>
       </div>
@@ -119,6 +121,7 @@
       <li class="card-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) en la planta de arriba de un Centro Pokémon. El efecto dura <b>hasta cerrar o reiniciar el juego</b>: tras reiniciar, vuelve a hablar con él. En el campo, <b>R</b> muestra tu cadena (o activa y desactiva «siempre shiny» si elegiste «R alterna»).</li>
       <li class="legendary-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) del Centro Pokémon. Después <b>sal del mapa y vuelve a entrar</b> en el lugar del evento (por ejemplo la Cueva Celeste o el Monte Luna) y volverá a estar disponible. Para los fósiles necesitas el fósil en la mochila; el Snorlax bloquea el camino hasta que lo despiertes con la Flauta Poké.</li>
       <li class="ultra-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) del Centro Pokémon. A partir de ahí, lanzar una de las bolas elegidas a un Pokémon salvaje lo captura siempre, hasta que cierres o reinicies el juego. No funciona contra Pokémon de entrenadores.</li>
+      <li class="gift-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) del Centro Pokémon. A partir de ahí, los Pokémon salvajes, los estáticos y los regalos que te den (al equipo o, si está lleno, a las cajas) salen shiny con la probabilidad elegida, hasta que cierres o reinicies el juego. El primer Pokémon que entre con el equipo vacío no se toca.</li>
     </ol>
   </section>
 

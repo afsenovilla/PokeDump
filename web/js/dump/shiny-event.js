@@ -1,7 +1,7 @@
 // El evento «Shiny Hunting» de la página principal: usa las direcciones que la página de extracción
 // encontró en la ROM del usuario (se guardan en el navegador) para adaptar la tarjeta a su juego.
 
-import { SHINY_SLOTS, ULTRA_REQUIRED, buildResetPayload, buildShinyPayload, buildUltraBallPayload } from './shiny.js';
+import { GIFT_REQUIRED, SHINY_SLOTS, ULTRA_REQUIRED, buildGiftShinyPayload, buildResetPayload, buildShinyPayload, buildUltraBallPayload } from './shiny.js';
 
 const KEY = 'pokedump-shiny';
 const REQUIRED = [...new Set(SHINY_SLOTS.map((s) => s[1]))];
@@ -79,6 +79,24 @@ export function ultraEvent(calibration, { balls = 'ultra', keep = false, shiny =
         build(game) {
             if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
             return buildUltraBallPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { balls, keep, shiny });
+        },
+    };
+}
+
+export const GIFT_EVENT_ID = 'gift-shiny';
+
+// ¿Tiene la calibración las direcciones del equipo y de las cajas? (las calibraciones anteriores no las tenían)
+export const supportsGifts = (calibration) => Boolean(calibration) && [...GIFT_REQUIRED, ...SHINY_SLOTS.map((s) => s[1])].every((k) => Number.isInteger(calibration.found?.[k]));
+
+// Shiny Hunting con probabilidad fija (1/N de SHINY_FIXED_ODDS; 1 = siempre) que además actúa sobre los regalos del equipo y de las cajas.
+export function giftEvent(calibration, { oneIn = 1 } = {}) {
+    return {
+        id: GIFT_EVENT_ID,
+        kind: 'card',
+        label: `Regalos shiny (${oneIn === 1 ? 'siempre' : `1/${oneIn}`})`,
+        build(game) {
+            if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
+            return buildGiftShinyPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn });
         },
     };
 }
