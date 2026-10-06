@@ -340,12 +340,12 @@ test:
 
 
 @pytest.mark.parametrize("balls,converted,untouched", [
-    ("ultra", [2], [3, 4, 5, 6]),
-    ("ultra-great", [2, 3], [4, 5, 6]),
-    ("all-standard", [2, 3, 4], [5, 6, 1]),
+    ("ultra", [2, 5], [3, 4, 6]),
+    ("ultra-great", [2, 3, 5], [4, 6]),
+    ("all-standard", [2, 3, 4, 5], [6, 1]),
 ])
 def test_ultra_ball_card_turns_balls_into_master_ball(balls, converted, untouched):
-    """Con la tarjeta instalada, el gancho cambia gLastUsedItem por MASTER BALL (1) solo para las bolas elegidas."""
+    """Con la tarjeta instalada, el gancho cambia gLastUsedItem por MASTER BALL (1) solo para las bolas elegidas (y la Safari Ball)."""
     core, mem, sym = install_card(balls)
     last_used = sym["gLastUsedItem"]
     for item in converted + untouched:
@@ -543,3 +543,30 @@ def test_gift_card_with_one_event_reset(group, flags):
     for _ in range(300):
         core.run_frame()
     assert counter() - before_frames >= 250, "el V-Blank dejó de ejecutarse"
+
+
+@pytest.mark.parametrize("variant,state_at", [("ultra", 8), ("ultra-keep", 8), ("ultra@1", 20), ("ultra-keep@toggle", 20)])
+def test_ultra_ball_card_also_covers_the_safari_ball(variant, state_at):
+    """Parque Safari: HandleAction_SafariZoneBallThrow pone gLastUsedItem = SAFARI BALL (5). Se convierte en Master Ball, el Pokémon queda registrado en la Safari Ball y la mochila no cambia."""
+    core, mem, sym = install_card(variant)
+    call_game(core, mem, sym, "SetBagPocketsPointers")
+    STATE, WORD, ONE = 0x0203FF60, 0x02030F00, 0x02030F10
+    enemy, last_used = sym["gEnemyParty"], sym["gLastUsedItem"]
+    ball = lambda: (mem.u16[enemy + 0x46] >> 11) & 0xF
+    mem.u32[WORD] = 5
+    call_game(core, mem, sym, "SetMonData", enemy, 38, WORD)
+    mem.u16[last_used] = 5
+    for _ in range(3):
+        core.run_frame()
+    assert mem.u16[last_used] == 1 and mem.u32[STATE + state_at] == 5
+    assert not call_game(core, mem, sym, "CheckBagHasItem", 5, 1), "no debe tocar la mochila con la Safari Ball"
+    mem.u32[ONE] = 1
+    call_game(core, mem, sym, "SetMonData", enemy, 38, ONE)
+    for _ in range(3):
+        core.run_frame()
+    assert ball() == 5 and mem.u32[STATE + state_at] == 0
+    # la Poké Ball no incluida y las demás cosas siguen igual
+    mem.u16[last_used] = 6
+    for _ in range(3):
+        core.run_frame()
+    assert mem.u16[last_used] == 6

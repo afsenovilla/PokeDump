@@ -402,11 +402,14 @@ function assembleUltraFunction(n, keep, cfg = ULTRA_ALONE) {
         { ldr: 0, pool: pool(cfg.lastUsed) },                                   // ldr r0, =gLastUsedItem
         0x8801,                                                          // ldrh r1, [r0]
         0x1e8a,                                                          // subs r2, r1, #2
-        0x2a00 | n, { b: 0xd800, to: 'end' },                            // cmp r2,#n ; bhi end
+        0x2a00 | n, { b: 0xd900, to: 'ball' },                           // cmp r2,#n ; bls ball   (una de las bolas elegidas)
+        0x2905, { b: 0xd100, to: 'end' },                                // cmp r1,#5 ; bne end    (la SAFARI BALL del Parque Safari también cuenta)
+        { label: 'ball' },
         strState(1),                                                     // str  r1, [r4, #estado]  anota la bola original
         // El juego escribe gLastUsedItem dos veces por lanzamiento (al elegir la bola y al ejecutar el turno), así que la bola se devuelve solo
         // una de cada dos veces: un byte en +31 del estado alterna 0/1 y se devuelve cuando valía 0.
-        ...(keep ? [ldrB(2, 4, 31), 0x2301, 0x4053, strB(3, 4, 31), 0x2a00, { b: 0xd100, to: 'norefund' },   // r2 = turno ; r3 = r2 ^ 1 ; guarda ; cmp r2,#0 ; bne norefund
+        ...(keep ? [0x2905, { b: 0xd000, to: 'norefund' },                            // cmp r1,#5 ; beq norefund   (la Safari Ball no sale de la mochila, no hay nada que devolver)
+            ldrB(2, 4, 31), 0x2301, 0x4053, strB(3, 4, 31), 0x2a00, { b: 0xd100, to: 'norefund' },   // r2 = turno ; r3 = r2 ^ 1 ; guarda ; cmp r2,#0 ; bne norefund
             0x0008, 0x2101, { ldr: 3, pool: pool(cfg.add) }, { bl: BX_R3_AT },     // AddBagItem(bola, 1): devuelve la bola que la mochila acaba de gastar
             { label: 'norefund' }, { ldr: 0, pool: pool(cfg.lastUsed) }] : []),
         0x2101, 0x8001,                                                  // movs r1,#1 ; strh r1,[r0]
