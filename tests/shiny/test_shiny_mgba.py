@@ -367,3 +367,28 @@ def test_ultra_ball_card_restores_the_registered_ball():
     for _ in range(3):
         core.run_frame()
     assert mem.u16[last_used] == 3          # «ultra» solo convierte la Ultra Ball
+
+
+def test_ultra_ball_card_keep_refunds_the_ball():
+    """Con «no gastar», al convertir la bola el gancho llama a AddBagItem y la mochila recupera la bola que acaba de gastar."""
+    core, mem, sym = install_card("ultra-keep")
+    call_game(core, mem, sym, "SetBagPocketsPointers")
+    def quantity(item):
+        # CheckBagHasItem(item, n) es cierto si hay al menos n: se busca la cantidad exacta probando
+        return next(n for n in range(0, 100) if not call_game(core, mem, sym, "CheckBagHasItem", item, n + 1))
+    assert call_game(core, mem, sym, "AddBagItem", 2, 5) == 1 and quantity(2) == 5
+    call_game(core, mem, sym, "RemoveBagItem", 2, 1)               # lo que hace el bolsillo al elegir la bola
+    assert quantity(2) == 4
+    mem.u16[sym["gLastUsedItem"]] = 2                              # lo que escribe el combate al lanzarla
+    for _ in range(3):
+        core.run_frame()
+    assert mem.u16[sym["gLastUsedItem"]] == 1 and quantity(2) == 5
+    for _ in range(30):                                            # y no se repite sin un lanzamiento nuevo
+        core.run_frame()
+    assert quantity(2) == 5
+    # la Super Ball no está entre las elegidas: no se toca la mochila
+    call_game(core, mem, sym, "AddBagItem", 3, 2)
+    mem.u16[sym["gLastUsedItem"]] = 3
+    for _ in range(3):
+        core.run_frame()
+    assert quantity(3) == 2

@@ -59,7 +59,7 @@ function find(rom, str, entry, limit = 3) {
     return hits;
 }
 
-const OPTIONAL_SYMBOLS = ['gLastUsedItem'];
+const OPTIONAL_SYMBOLS = ['gLastUsedItem', 'AddBagItem'];
 const inRange = {
     func: (v, size) => v >= ROM_BASE && v < ROM_BASE + size,
     ewram: (v) => v >= 0x02000000 && v < 0x02040000,
@@ -309,7 +309,7 @@ export const ULTRA_REQUIRED = ['gIntrTable', 'gMain', 'gLastUsedItem', 'sGlobalS
 const ULTRA_CARD_ID = 0x5046, MON_DATA_POKEBALL = 38, BX_R3_AT = 0x284;      // BX_R3_AT: «bx r3» del gancho, al que se llega con bl
 
 // Ensamblador mínimo de Thumb para la función del gancho. Posiciones en el archivo de la tarjeta (script + 336).
-function assembleUltraFunction(n) {
+function assembleUltraFunction(n, keep) {
     const pool = (scriptAt) => scriptAt + SCRIPT_AT;                     // dirección en archivo de una palabra del pool de literales
     const items = [
         0xb500,                                                          // push {lr}
@@ -325,6 +325,8 @@ function assembleUltraFunction(n) {
         0x1e8a,                                                          // subs r2, r1, #2
         0x2a00 | n, { b: 0xd800, to: 'end' },                            // cmp r2,#n ; bhi end
         0x60a1,                                                          // str  r1, [r4, #8]       anota la bola original
+        ...(keep ? [0x0008, 0x2101, { ldr: 3, pool: pool(0x36c) }, { bl: BX_R3_AT },     // AddBagItem(bola, 1): devuelve la bola que la mochila acaba de gastar
+            { ldr: 0, pool: pool(0x340) }] : []),
         0x2101, 0x8001,                                                  // movs r1,#1 ; strh r1,[r0]
         { label: 'end' },
         0xbd00,                                                          // pop {pc}
@@ -354,10 +356,10 @@ function assembleUltraFunction(n) {
     return out;
 }
 
-export function buildUltraBallPayload(found, game, { balls = 'ultra' } = {}) {
+export function buildUltraBallPayload(found, game, { balls = 'ultra', keep = false } = {}) {
     const n = ULTRA_BALL_CHOICES[balls];
     if (n === undefined) throw new Error(`bolas no admitidas: ${balls}`);
-    const missing = ULTRA_REQUIRED.filter((k) => found[k] === undefined);
+    const missing = [...ULTRA_REQUIRED, ...(keep ? ['AddBagItem'] : [])].filter((k) => found[k] === undefined);
     if (missing.length) throw new Error(`faltan direcciones del juego: ${missing.join(', ')}`);
     const raw = Uint8Array.from(atob(SHINY_BASE_BASE64.replace(/\s+/g, '')), (c) => c.charCodeAt(0));
     const card = raw.slice(0, CARD_BYTES);
@@ -373,20 +375,21 @@ export function buildUltraBallPayload(found, game, { balls = 'ultra' } = {}) {
     put32(script, 0x344, found.gEnemyParty >>> 0);
     put32(script, 0x360, found.GetMonData >>> 0);
     put32(script, 0x364, found.SetMonData >>> 0);
+    if (keep) put32(script, 0x36c, found.AddBagItem >>> 0);
     // El gancho llama a tres funciones: se anulan las dos primeras (bl → nop) y la tercera se sustituye.
     patchHalfwords(script, at(0x26c), [0xf000, 0xf80b, 0xf000, 0xf840], [0x46c0, 0x46c0, 0x46c0, 0x46c0], 'llamadas del gancho');
     patchHalfwords(script, at(0x330), [0xb500, 0x4d57], [0xb500, 0x4d57], 'función del gancho');
-    const fn = assembleUltraFunction(n);
+    const fn = assembleUltraFunction(n, keep);
     for (let i = at(0x330); i < at(0x3bc); i += 2) { script[i] = 0xc0; script[i + 1] = 0x46; }
     fn.forEach((w, i) => { script[at(0x330) + 2 * i] = w & 0xff; script[at(0x330) + 2 * i + 1] = w >> 8; });
     const which = { ultra: 'ULTRA BALL', 'ultra-great': 'ULTRA y SUPER BALL', 'all-standard': 'POKé, SUPER y ULTRA BALL' }[balls];
-    writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', 'Bola = captura segura.'));
+    writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', keep ? 'Bola infinita.' : 'Bola = captura segura.'));
     writeText(script, 0x92, 0xc8 - 0x92, message('Este regalo no funciona con', 'esta versión del juego.'));
     card[0] = ULTRA_CARD_ID & 0xff; card[1] = ULTRA_CARD_ID >> 8;
     card[2] = 150; card[3] = 0;
     writeText(card, 10, 40, [...line('MASTER BALL'), 0xff]);
     writeText(card, 50, 40, [...line('Captura segura'), 0xff]);
-    ['Hasta que cierres el juego,', `${which} captura`, 'siempre, como una MASTER BALL.', 'Habla con el repartidor del CENTRO.']
+    ['Hasta que cierres el juego,', `${which} captura`, keep ? 'siempre y no se gasta.' : 'siempre, como una MASTER BALL.', 'Habla con el repartidor del CENTRO.']
         .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
     writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
     return { card, script };
