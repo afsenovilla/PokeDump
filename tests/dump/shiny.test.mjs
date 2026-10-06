@@ -243,3 +243,16 @@ test('calibración incluida de Verde Hoja español: sirve para todas las tarjeta
     assert.ok(shinyEvent(cal, { oneIn: 'toggle' }).build(game).script.length > 0);
     assert.equal(giftEvent(cal).build({ gameCode: 'BPRS', revision: 10 }), null);       // otro juego: sin calibración
 });
+
+test('Regalos shiny: cada evento reiniciable cabe junto a los regalos y los demás no se tocan', async () => {
+    const { buildGiftShinyPayload, GIFT_RESET_GROUPS } = await import('../../web/js/dump/shiny.js');
+    const { KNOWN_CALIBRATIONS } = await import('../../web/js/dump/shiny-event.js');
+    const found = KNOWN_CALIBRATIONS[0].found, game = { gameCode: 'BPGS', revision: 10 };
+    const plain = buildGiftShinyPayload(found, game, { oneIn: 1 });
+    for (const reset of GIFT_RESET_GROUPS) {
+        const made = buildGiftShinyPayload(found, game, { oneIn: 1, reset });
+        assert.equal(made.script.length, plain.script.length);
+        assert.ok(made.summary.includes('reiniciar'));
+    }
+    assert.throws(() => buildGiftShinyPayload(found, game, { oneIn: 1, reset: 'islands' }));
+});

@@ -545,7 +545,26 @@ function assembleGiftFunction() {
     ], GIFT_AT);
 }
 
-export function buildGiftShinyPayload(found, game, { oneIn = 1 } = {}) {
+// Regalos shiny + reiniciar UN evento: el gestor de R y el script de la cadena (script 0x398…0x3c8, 48 bytes) no se usan en esta tarjeta,
+// así que ahí van los `clearflag` del evento elegido. En 0x56 el script salta (vgoto) a ese bloque, que borra las marcas, enseña el
+// mensaje y vuelve a 0x5b (el resto del mensaje original). El bloque cuesta 3 bytes por bandera + 10 de salto y mensaje.
+export const GIFT_RESET_GROUPS = ['fossils', 'hitmon', 'eevee', 'lapras', 'magikarp', 'legendary', 'snorlax'];
+const GIFT_RESET_AT = 0x39c, GIFT_RESET_END = 0x3c8, MESSAGE_AT = 0x56, MESSAGE_TAIL = 0x5b;
+
+function patchGiftReset(script, group) {
+    const info = RESET_GROUPS[group];
+    if (!GIFT_RESET_GROUPS.includes(group) || !info) throw new Error('evento no admitido junto a los regalos shiny');
+    const vptr = (offset) => [offset & 0xff, (offset >> 8) & 0xff, 0x00, 0x08];
+    const block = [...info.flags.flatMap((flag) => [0x2a, flag & 0xff, flag >> 8]), 0xbd, ...vptr(0x6a), 0xb9, ...vptr(MESSAGE_TAIL)];   // clearflag… ; vmessage ok ; vgoto cola
+    if (GIFT_RESET_AT + block.length > GIFT_RESET_END) throw new Error('el evento no cabe en la tarjeta de regalos');
+    if (hexAt(script, MESSAGE_AT, 5) !== 'bd6a000008' || hexAt(script, MESSAGE_TAIL, 5) !== '666d68' + '6c02') throw new Error('la plantilla de la tarjeta no es la esperada (mensaje)');
+    script.fill(0xff, GIFT_RESET_AT, GIFT_RESET_END);
+    script.set(block, GIFT_RESET_AT);
+    script.set([0xb9, ...vptr(GIFT_RESET_AT)], MESSAGE_AT);                                    // vgoto bloque
+    return info;
+}
+
+export function buildGiftShinyPayload(found, game, { oneIn = 1, reset = null } = {}) {
     if (!SHINY_FIXED_ODDS.includes(oneIn)) throw new Error('los regalos solo se combinan con una probabilidad fija');
     const missing = GIFT_REQUIRED.filter((k) => found[k] === undefined);
     if (missing.length) throw new Error(`faltan direcciones del juego: ${missing.join(', ')}`);
@@ -562,12 +581,13 @@ export function buildGiftShinyPayload(found, game, { oneIn = 1 } = {}) {
     put32(script, GIFT_POOL.party, found.gPlayerParty >>> 0);
     put32(script, GIFT_POOL.storage, found.gPokemonStoragePtr >>> 0);
     const odds = oneIn === 1 ? 'siempre shiny' : `shiny 1/${oneIn}`;
-    writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', 'Regalos shiny.'));
+    const event = reset ? patchGiftReset(script, reset) : null;
+    writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', event ? 'Shiny + evento listo.' : 'Regalos shiny.'));
     card[0] = 0x47; card[1] = 0x50; card[2] = 150; card[3] = 0;
     writeText(card, 10, 40, [...line('REGALOS SHINY'), 0xff]);
     writeText(card, 50, 40, [...line(odds), 0xff]);
-    ['Salvajes, estáticos y regalos', '(iniciales, fósiles, huevos)', 'al equipo o a las cajas, hasta', 'cerrar el juego. Habla al repartidor.']
+    ['Salvajes, estáticos y regalos', event ? `Y reinicia: ${event.short}.` : '(iniciales, fósiles, huevos)', 'al equipo o a las cajas, hasta', 'cerrar el juego. Habla al repartidor.']
         .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
     writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
-    return { card, script, summary: `regalos + ${odds}` };
+    return { card, script, summary: `regalos + ${odds}${event ? ` + reiniciar ${event.short}` : ''}` };
 }
