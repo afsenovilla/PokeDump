@@ -484,7 +484,7 @@ function renderDump() {
     for (const input of document.querySelectorAll('#odds-panel input')) input.disabled = running;
     const summary = calibrationSummary(calibration);
     $('calib-summary').textContent = summary
-        ? `Calibración: ${describeGameCode(calibration.gameCode)}, ${summary.count} direcciones${summary.missingForAll.length ? ` · faltan para todas las tarjetas: ${summary.missingForAll.join(', ')}` : ' · completa'}`
+        ? `Calibración: ${describeGameCode(calibration.gameCode)}${calibration.builtin ? ' (incluida, no hace falta hacer nada)' : ''}, ${summary.count} direcciones${summary.missingForAll.length ? ` · faltan para todas las tarjetas: ${summary.missingForAll.join(', ')}` : ' · completa'}`
         : 'Calibración: ninguna en esta ventana';
     $('calib-clear').disabled = !calibration;
     $('gift-desc').textContent = supportsGifts(calibration)
