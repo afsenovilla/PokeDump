@@ -52,6 +52,9 @@ public class SerialBridge {
         UsbSerialPort port;
         UsbDeviceConnection connection;
         SerialInputOutputManager manager;
+        int controlInterface = -1;       // interfaz CDC de control (solo puertos CDC-ACM); -1 = usar el controlador de la librería
+        boolean dtr = false;
+        boolean rts = false;
     }
 
     private final Activity activity;
@@ -153,7 +156,6 @@ public class SerialBridge {
         try {
             port.open(connection);
             port.setParameters(baudRate > 0 ? baudRate : 115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
-            try { port.setDTR(true); port.setRTS(true); } catch (Exception ignored) { }   // como al abrir un puerto en un ordenador
         } catch (Exception e) {
             try { port.close(); } catch (Exception ignored) { }
             connection.close();
@@ -162,6 +164,15 @@ public class SerialBridge {
         final Session session = new Session();
         session.port = port;
         session.connection = connection;
+        if (driver instanceof CdcAcmSerialDriver) {
+            for (int i = 0; i < device.getInterfaceCount(); i++) {
+                if (device.getInterface(i).getInterfaceClass() == 2) {      // USB_CLASS_COMM
+                    session.controlInterface = device.getInterface(i).getId();
+                    break;
+                }
+            }
+        }
+        setLines(session, 1, 1);     // como al abrir un puerto en un ordenador: DTR y RTS activados, a la vez
         final String sessionId = id;
         session.manager = new SerialInputOutputManager(port, new SerialInputOutputManager.Listener() {
             @Override
@@ -206,9 +217,24 @@ public class SerialBridge {
             session = sessions.get(id);
         }
         if (session == null) return false;
+        return setLines(session, dtr, rts);
+    }
+
+    /**
+     * DTR y RTS. En los puertos CDC-ACM (las placas con USB nativo: ESP32-S3/C3/C6) los dos cambian en UNA sola orden de control
+     * (SET_CONTROL_LINE_STATE), como hace Chrome de escritorio: el USB-Serial/JTAG de la placa interpreta la secuencia de estados
+     * como el circuito de auto-reset, y cambiarlos uno a uno pasa por estados que la dejan en el bootloader.
+     */
+    private boolean setLines(Session session, int dtr, int rts) {
+        if (dtr >= 0) session.dtr = dtr == 1;
+        if (rts >= 0) session.rts = rts == 1;
         try {
-            if (dtr >= 0) session.port.setDTR(dtr == 1);
-            if (rts >= 0) session.port.setRTS(rts == 1);
+            if (session.controlInterface >= 0) {
+                int value = (session.dtr ? 1 : 0) | (session.rts ? 2 : 0);
+                return session.connection.controlTransfer(0x21, 0x22, value, session.controlInterface, null, 0, 500) >= 0;
+            }
+            if (dtr >= 0) session.port.setDTR(session.dtr);
+            if (rts >= 0) session.port.setRTS(session.rts);
             return true;
         } catch (Exception e) {
             return false;
