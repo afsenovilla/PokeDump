@@ -343,6 +343,7 @@ test:
     ("ultra", [2, 5], [3, 4, 6]),
     ("ultra-great", [2, 3, 5], [4, 6]),
     ("all-standard", [2, 3, 4, 5], [6, 1]),
+    ("all", [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], [1, 13, 0]),
 ])
 def test_ultra_ball_card_turns_balls_into_master_ball(balls, converted, untouched):
     """Con la tarjeta instalada, el gancho cambia gLastUsedItem por MASTER BALL (1) solo para las bolas elegidas (y la Safari Ball)."""

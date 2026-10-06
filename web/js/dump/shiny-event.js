@@ -92,7 +92,7 @@ export const supportsUltra = (calibration) => Boolean(calibration) && [...ULTRA_
 
 export const supportsKeep = (calibration) => supportsUltra(calibration) && Number.isInteger(calibration.found?.AddBagItem);
 
-export function ultraEvent(calibration, { balls = 'ultra', keep = true, shiny = null } = {}) {
+export function ultraEvent(calibration, { balls = 'all', keep = true, shiny = null } = {}) {
     return {
         id: ULTRA_EVENT_ID,
         kind: 'card',

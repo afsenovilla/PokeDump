@@ -343,7 +343,7 @@ export const buildLegendaryPayload = (game) => buildResetPayload(game, ['legenda
 //     que el combate calcule la captura (Cmd_handleballthrow). La mochila ya descontó la bola al elegirla (usa gSpecialVar_ItemId).
 // Solo cambia la RAM. Limitación: si tras un lanzamiento fallido usas una Master Ball de verdad en el mismo combate, quedaría anotada
 // como la bola anterior.
-export const ULTRA_BALL_CHOICES = { ultra: 0, 'ultra-great': 1, 'all-standard': 2 };      // → N: ids 2..2+N
+export const ULTRA_BALL_CHOICES = { ultra: 0, 'ultra-great': 1, 'all-standard': 2, all: 10 };      // → N: ids 2..2+N (all: de la Ultra Ball a la Honor Ball, ids 2..12)
 export const ULTRA_REQUIRED = ['gIntrTable', 'gMain', 'gLastUsedItem', 'sGlobalScriptContext', 'gEnemyParty', 'GetMonData', 'SetMonData'];
 const ULTRA_CARD_ID = 0x5046, MON_DATA_POKEBALL = 38, BX_R3_AT = 0x284;
 // Dónde va la función y qué huecos del pool de literales usa: sola (sustituye a la función de Shiny Hunting) o junto a shiny (sustituye a la
@@ -421,7 +421,7 @@ function assembleUltraFunction(n, keep, cfg = ULTRA_ALONE) {
 
 // shiny: null = solo la bola; 'toggle' o 1/N de SHINY_FIXED_ODDS = además Shiny Hunting con esa probabilidad (la tarjeta de bolas
 // reutiliza el hueco de la función de la cadena, así que no se puede combinar con el modo original de cadena).
-export function buildUltraBallPayload(found, game, { balls = 'ultra', keep = false, shiny = null } = {}) {
+export function buildUltraBallPayload(found, game, { balls = 'all', keep = false, shiny = null } = {}) {
     const n = ULTRA_BALL_CHOICES[balls];
     if (n === undefined) throw new Error(`bolas no admitidas: ${balls}`);
     const missing = [...ULTRA_REQUIRED, ...(keep ? ['AddBagItem'] : [])].filter((k) => found[k] === undefined);
@@ -448,7 +448,7 @@ export function buildUltraBallPayload(found, game, { balls = 'ultra', keep = fal
     const fn = assembleUltraFunction(n, keep);
     for (let i = at(0x330); i < at(0x3bc); i += 2) { script[i] = 0xc0; script[i + 1] = 0x46; }
     fn.forEach((w, i) => { script[at(0x330) + 2 * i] = w & 0xff; script[at(0x330) + 2 * i + 1] = w >> 8; });
-    const which = { ultra: 'ULTRA BALL', 'ultra-great': 'ULTRA y SUPER BALL', 'all-standard': 'POKé, SUPER y ULTRA BALL' }[balls];
+    const which = { ultra: 'ULTRA BALL', 'ultra-great': 'ULTRA y SUPER BALL', 'all-standard': 'POKé, SUPER y ULTRA BALL', all: 'CUALQUIER BOLA' }[balls];
     writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', keep ? 'Bola infinita.' : 'Bola = captura segura.'));
     writeText(script, 0x92, 0xc8 - 0x92, message('Este regalo no funciona con', 'esta versión del juego.'));
     card[0] = ULTRA_CARD_ID & 0xff; card[1] = ULTRA_CARD_ID >> 8;
@@ -475,7 +475,7 @@ function buildUltraWithShiny(found, game, { n, balls, keep, shiny }) {
     if (keep) put32(script, ULTRA_WITH_SHINY.add, found.AddBagItem >>> 0);
     const odds = shiny === SHINY_TOGGLE ? 'R alterna el siempre shiny' : shiny === 1 ? 'siempre shiny' : `shiny 1/${shiny}`;
     writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', shiny === SHINY_TOGGLE ? 'Bola segura. R: shiny.' : 'Bola segura y shiny.'));
-    const which = { ultra: 'ULTRA BALL', 'ultra-great': 'ULTRA y SUPER BALL', 'all-standard': 'POKé, SUPER y ULTRA BALL' }[balls];
+    const which = { ultra: 'ULTRA BALL', 'ultra-great': 'ULTRA y SUPER BALL', 'all-standard': 'POKé, SUPER y ULTRA BALL', all: 'CUALQUIER BOLA' }[balls];
     card[0] = ULTRA_CARD_ID & 0xff; card[1] = ULTRA_CARD_ID >> 8;
     card[2] = 150; card[3] = 0;
     writeText(card, 10, 40, [...line('BOLA SEGURA + SHINY'), 0xff]);

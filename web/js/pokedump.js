@@ -311,7 +311,7 @@ function chosenOdds() {
 }
 const chosenResets = () => [...document.querySelectorAll('input[name="reset"]:checked')].map((el) => el.value);
 const chosenGiftReset = () => document.querySelector('input[name="giftreset"]:checked')?.value || null;
-const chosenBalls = () => document.querySelector('input[name="balls"]:checked')?.value ?? 'ultra';
+const chosenBalls = () => 'all';
 const eventById = (id) => (id === GIFT_EVENT_ID ? (supportsGifts(calibration) ? giftEvent(calibration, { oneIn: chosenOdds() ?? 1, reset: chosenGiftReset() }) : null) : id === ULTRA_EVENT_ID ? (supportsUltra(calibration) ? ultraEvent(calibration, { balls: chosenBalls(), keep: true, shiny: chosenOdds() }) : null) : id === LEGENDARY_EVENT_ID ? resetEvent(chosenResets()) : id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
@@ -469,7 +469,6 @@ function renderDump() {
     $('gift-reset-panel').hidden = chosenMode() !== GIFT_EVENT_ID;
     for (const input of document.querySelectorAll('#gift-reset-panel input')) input.disabled = running;
     $('balls-panel').hidden = chosenMode() !== ULTRA_EVENT_ID;
-    for (const input of document.querySelectorAll('#balls-panel input')) input.disabled = running;
     for (const li of document.querySelectorAll('.ultra-only')) li.hidden = chosenMode() !== ULTRA_EVENT_ID;
     for (const li of document.querySelectorAll('.legendary-only')) li.hidden = chosenMode() !== LEGENDARY_EVENT_ID;
     const ultra = chosenMode() === ULTRA_EVENT_ID;
@@ -493,7 +492,7 @@ function renderDump() {
         ? `Salvajes, estáticos y regalos (iniciales, fósiles, Hitmon, Eevee, Lapras, huevos…) shiny, al equipo o a las cajas. Calibrada para ${describeGameCode(calibration.gameCode)}. Opcionalmente reinicia un evento (fósiles, Hitmon, Eevee…). Va aparte de la tarjeta de bolas y no lleva la tecla R.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» (si ya lo hiciste, repítelo: ahora busca tres direcciones más).';
     $('ultra-desc').textContent = supportsUltra(calibration)
-        ? `La ULTRA BALL (o las que elijas) captura siempre, como una MASTER BALL, mientras el juego esté abierto. También la SAFARI BALL del Parque Safari (esas siguen contando en el contador del parque). Calibrada para ${describeGameCode(calibration.gameCode)}. Cambia el juego en memoria; el Pokémon se registra en la bola que lanzaste.`
+        ? `Cualquier bola (Poké, Super, Ultra, la Safari…) captura siempre, como una MASTER BALL, y no se gasta, mientras el juego esté abierto. También la SAFARI BALL del Parque Safari (esas siguen contando en el contador del parque). Calibrada para ${describeGameCode(calibration.gameCode)}. Cambia el juego en memoria; el Pokémon se registra en la bola que lanzaste.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» (si ya lo hiciste, repítelo: ahora busca una dirección más).';
     $('shiny-desc').textContent = calibration
         ? `Probabilidad shiny mucho más alta en combates salvajes, con cadena por especie. Calibrada para ${describeGameCode(calibration.gameCode)}. No es de solo lectura: cambia el juego hasta que lo cierres o reinicies.`
@@ -563,7 +562,7 @@ function wire() {
     $('start').onclick = giftStart;
     $('stop').onclick = () => giftStop();
     for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', render);
-    for (const radio of document.querySelectorAll('input[name="odds"], input[name="fixed"], input[name="balls"], input[name="reset"], input[name="giftreset"]')) radio.addEventListener('change', render);
+    for (const radio of document.querySelectorAll('input[name="odds"], input[name="fixed"], input[name="reset"], input[name="giftreset"]')) radio.addEventListener('change', render);
     $('decision-yes').onclick = () => { state.gift?.decide(true); state.decision = null; render(); };
     $('decision-no').onclick = () => { state.gift?.decide(false); state.decision = null; render(); };
     $('esp-reinstall').onclick = () => onEspInstall();
