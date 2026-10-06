@@ -312,7 +312,7 @@ function chosenOdds() {
 const chosenResets = () => [...document.querySelectorAll('input[name="reset"]:checked')].map((el) => el.value);
 const chosenGiftReset = () => document.querySelector('input[name="giftreset"]:checked')?.value || null;
 const chosenBalls = () => document.querySelector('input[name="balls"]:checked')?.value ?? 'ultra';
-const eventById = (id) => (id === GIFT_EVENT_ID ? (supportsGifts(calibration) ? giftEvent(calibration, { oneIn: chosenOdds() ?? 1, reset: chosenGiftReset() }) : null) : id === ULTRA_EVENT_ID ? (supportsUltra(calibration) ? ultraEvent(calibration, { balls: chosenBalls(), keep: $('balls-keep').checked, shiny: chosenOdds() }) : null) : id === LEGENDARY_EVENT_ID ? resetEvent(chosenResets()) : id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
+const eventById = (id) => (id === GIFT_EVENT_ID ? (supportsGifts(calibration) ? giftEvent(calibration, { oneIn: chosenOdds() ?? 1, reset: chosenGiftReset() }) : null) : id === ULTRA_EVENT_ID ? (supportsUltra(calibration) ? ultraEvent(calibration, { balls: chosenBalls(), keep: true, shiny: chosenOdds() }) : null) : id === LEGENDARY_EVENT_ID ? resetEvent(chosenResets()) : id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
@@ -470,7 +470,6 @@ function renderDump() {
     for (const input of document.querySelectorAll('#gift-reset-panel input')) input.disabled = running;
     $('balls-panel').hidden = chosenMode() !== ULTRA_EVENT_ID;
     for (const input of document.querySelectorAll('#balls-panel input')) input.disabled = running;
-    if (!supportsKeep(calibration)) { $('balls-keep').checked = false; $('balls-keep').disabled = true; }
     for (const li of document.querySelectorAll('.ultra-only')) li.hidden = chosenMode() !== ULTRA_EVENT_ID;
     for (const li of document.querySelectorAll('.legendary-only')) li.hidden = chosenMode() !== LEGENDARY_EVENT_ID;
     const ultra = chosenMode() === ULTRA_EVENT_ID;
@@ -564,7 +563,7 @@ function wire() {
     $('start').onclick = giftStart;
     $('stop').onclick = () => giftStop();
     for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', render);
-    for (const radio of document.querySelectorAll('input[name="odds"], input[name="fixed"], input[name="balls"], #balls-keep, input[name="reset"], input[name="giftreset"]')) radio.addEventListener('change', render);
+    for (const radio of document.querySelectorAll('input[name="odds"], input[name="fixed"], input[name="balls"], input[name="reset"], input[name="giftreset"]')) radio.addEventListener('change', render);
     $('decision-yes').onclick = () => { state.gift?.decide(true); state.decision = null; render(); };
     $('decision-no').onclick = () => { state.gift?.decide(false); state.decision = null; render(); };
     $('esp-reinstall').onclick = () => onEspInstall();
