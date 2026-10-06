@@ -9,7 +9,7 @@ import { loadManifest } from './manifest.js';
 import { GiftDistribution } from './gift/distribution.js';
 import { describeGameCode } from './gift/mystery-gift.js';
 import { DUMP_EVENTS } from './dump/ramdump.js';
-import { GIFT_EVENT_ID, LEGENDARY_EVENT_ID, SHINY_EVENT_ID, ULTRA_EVENT_ID, giftEvent, resetEvent, loadCalibration, shinyEvent, supportsGifts, supportsKeep, supportsUltra, ultraEvent } from './dump/shiny-event.js';
+import { GIFT_EVENT_ID, LEGENDARY_EVENT_ID, SHINY_EVENT_ID, ULTRA_EVENT_ID, calibrationSummary, clearCalibration, giftEvent, parseCalibrationReport, resetEvent, loadCalibration, saveCalibration, shinyEvent, supportsGifts, supportsKeep, supportsUltra, ultraEvent } from './dump/shiny-event.js';
 
 const $ = (id) => document.getElementById(id);
 const CHIP_NAMES = { esp32: 'ESP32', esp32c3: 'ESP32-C3', esp32c6: 'ESP32-C6', esp32s3: 'ESP32-S3' };
@@ -300,7 +300,7 @@ function keysLine() {
 
 // ---------------------------------------------------------------- volcado
 
-const calibration = loadCalibration();
+let calibration = loadCalibration();
 // Probabilidad elegida en el panel: null = original (cadena), 'toggle' = R alterna, o 1/N fija.
 function chosenOdds() {
     const value = document.querySelector('input[name="odds"]:checked')?.value ?? '';
@@ -319,10 +319,10 @@ function dumpBlocker() {
     if (!state.esp.info) return 'Primero instala el firmware (paso 1).';
     if (newer(GIFT_FIRMWARE, state.esp.info.version)) return `Hace falta el firmware ${GIFT_FIRMWARE} o superior: reinstálalo en el paso 1.`;
     if (!state.keys?.complete) return 'A la placa le faltan las claves (paso 1).';
-    if (chosenMode() === GIFT_EVENT_ID && !supportsGifts(calibration)) return 'Para la tarjeta de regalos, pasa tu NSP por «Comprobar mi juego» (de nuevo, si ya lo hiciste: ahora busca tres direcciones más).';
+    if (chosenMode() === GIFT_EVENT_ID && !supportsGifts(calibration)) return 'Falta la calibración de la tarjeta de regalos: pega abajo, en «Calibración», el informe de «Comprobar mi juego» (si lo hiciste en otra ventana) o repítelo en esta.';
     if (chosenMode() === LEGENDARY_EVENT_ID && !chosenResets().length) return 'Marca al menos un evento que quieras reiniciar.';
-    if (chosenMode() === ULTRA_EVENT_ID && !supportsUltra(calibration)) return 'Para la tarjeta de bolas, pasa tu NSP por «Comprobar mi juego» (de nuevo, si ya lo hiciste: ahora busca una dirección más).';
-    if (chosenMode() === SHINY_EVENT_ID && !calibration) return 'Para la tarjeta Shiny Hunting, antes pasa tu NSP por «Comprobar mi juego» (una vez).';
+    if (chosenMode() === ULTRA_EVENT_ID && !supportsUltra(calibration)) return 'Falta la calibración de la tarjeta de bolas: pega abajo, en «Calibración», el informe de «Comprobar mi juego» (si lo hiciste en otra ventana) o repítelo en esta.';
+    if (chosenMode() === SHINY_EVENT_ID && !calibration) return 'Para la tarjeta Shiny Hunting falta la calibración: pasa tu NSP por «Comprobar mi juego» en esta ventana o pega el informe en «Calibración».';
     if (state.esp.info.transport === 'UART' && state.esp.baudRate < FAST_BAUD) return 'El firmware de esta placa va a 115200 baudios, que no basta: actualízalo en el paso 1.';
     return null;
 }
@@ -482,6 +482,11 @@ function renderDump() {
     for (const li of document.querySelectorAll('.gift-only')) li.hidden = !gifts;
     $('fixed-chips').hidden = document.querySelector('input[name="odds"]:checked')?.value !== 'fixed';
     for (const input of document.querySelectorAll('#odds-panel input')) input.disabled = running;
+    const summary = calibrationSummary(calibration);
+    $('calib-summary').textContent = summary
+        ? `Calibración: ${describeGameCode(calibration.gameCode)}, ${summary.count} direcciones${summary.missingForAll.length ? ` · faltan para todas las tarjetas: ${summary.missingForAll.join(', ')}` : ' · completa'}`
+        : 'Calibración: ninguna en esta ventana';
+    $('calib-clear').disabled = !calibration;
     $('gift-desc').textContent = supportsGifts(calibration)
         ? `Salvajes, estáticos y regalos (iniciales, fósiles, Hitmon, Eevee, Lapras, huevos…) shiny, al equipo o a las cajas. Calibrada para ${describeGameCode(calibration.gameCode)}. Va aparte de la tarjeta de bolas y no lleva la tecla R.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» (si ya lo hiciste, repítelo: ahora busca tres direcciones más).';

@@ -216,3 +216,18 @@ test('tarjeta Regalos shiny: cabe en el hueco, anula las llamadas del gancho que
     assert.throws(() => buildGiftShinyPayload(synthetic(), game, {}), /faltan direcciones/);
     assert.throws(() => buildGiftShinyPayload(found, game, { oneIn: 3 }), /probabilidad fija/);
 });
+
+test('calibración desde el informe de «Comprobar mi juego»: se acepta el informe completo y se rechazan los incompletos', async () => {
+    const { parseCalibrationReport, supportsGifts, supportsUltra } = await import('../../web/js/dump/shiny-event.js');
+    const found = { ...synthetic(), gLastUsedItem: 1, AddBagItem: 2, gPlayerPartyCount: 3, gPlayerParty: 4, gPokemonStoragePtr: 5 };
+    const report = { game_code: 'BPGS', revision: 10, rom_facts: { shiny: { found, problems: [], warnings: [] } } };
+    const ok = parseCalibrationReport(JSON.stringify(report));
+    assert.ok(ok.ok); assert.equal(ok.data.gameCode, 'BPGS'); assert.ok(supportsGifts(ok.data)); assert.ok(supportsUltra(ok.data));
+    assert.ok(parseCalibrationReport(JSON.stringify(ok.data)).ok);                      // también acepta una calibración ya hecha
+    const incomplete = { ...report, rom_facts: { shiny: { found: synthetic(), problems: [], warnings: [] } } };
+    assert.ok(parseCalibrationReport(JSON.stringify(incomplete)).ok);                    // calibración válida de Shiny Hunting…
+    assert.ok(!supportsGifts(parseCalibrationReport(JSON.stringify(incomplete)).data));  // …pero sin las direcciones de regalos
+    assert.ok(!parseCalibrationReport('no json').ok);
+    assert.ok(!parseCalibrationReport('{"a":1}').ok);
+    assert.ok(!parseCalibrationReport(JSON.stringify({ ...report, game_code: 'AXVE' })).ok);
+});
