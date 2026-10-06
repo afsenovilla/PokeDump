@@ -51,7 +51,7 @@ def test_toggle_off_keeps_chain_odds(machine, chain, expected):
 
 @pytest.mark.parametrize("chain", [0, 7, 30, 500])
 def test_toggle_on_is_always_shiny(machine, chain):
-    assert threshold(machine, region("toggle"), chain, 1) >= 0x10000
+    assert threshold(machine, region("toggle"), chain, 100) >= 0x10000
 
 
 @pytest.mark.parametrize("n", [64, 16, 4, 1])

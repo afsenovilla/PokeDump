@@ -152,8 +152,8 @@ function patchThreshold(script, oneIn) {
     script.set(out, at);
 }
 
-// Modo «R alterna siempre shiny»: la tecla R conmuta un indicador (halfword en +2 del estado del gancho, 0/1) y el umbral pasa a
-// `((min(cadena, 30) + 2) << 5) | (indicador << 16)`: con el indicador a 1 siempre es ≥ 65536, así que todo salvaje sale shiny.
+// Modo «R alterna siempre shiny»: la tecla R conmuta un indicador (halfword en +2 del estado del gancho, 0 o 100) y el umbral pasa a
+// `((min(cadena, 30) + 2) << 5) | (indicador << 16)`: con el indicador a 100 siempre es ≥ 65536, así que todo salvaje sale shiny.
 // Para hacer sitio: el umbral deja de exigir que la especie sea la del encuentro anterior (la cadena cuenta para cualquier
 // especie) y el gestor de R ya no comprueba sLockFieldControls ni muestra la especie. Todas las posiciones son del script de RAM.
 export const SHINY_TOGGLE = 'toggle';
@@ -183,13 +183,13 @@ function patchToggle(script) {
         0x486d, 0x7800, 0x2802, 0xd208, 0x4871, 0x88a1, 0x8041, 0x88e1, 0x8081], [
         0x4875, 0x7800, 0x2802, 0xd110,           // ldr r0,=sGlobalScriptContextStatus ; ldrb ; cmp #2 ; bne fin   (antes: bloqueo del campo)
         0x486f, 0x7800, 0x2802, 0xd20c,           // ldr r0,=gQuestLogState ; ldrb ; cmp #2 ; bcs fin
-        0x8861, 0x2201, 0x4051, 0x8061,           // ldrh r1,[r4,#2] ; movs r2,#1 ; eors r1,r2 ; strh r1,[r4,#2]   conmuta el indicador
+        0x8861, 0x2264, 0x4051, 0x8061,           // ldrh r1,[r4,#2] ; movs r2,#100 ; eors r1,r2 ; strh r1,[r4,#2]   conmuta el indicador (0 ↔ 100)
         0x4871,                                   // ldr r0,=gSpecialVar_0x8004
         0x8041, 0x46c0, 0x46c0, 0x46c0,           // strh r1,[r0,#2] (var 0x8005 = indicador) ; nop ×3
     ], 'gestor de R');
 }
 
-const TOGGLE_LINES = ['Pulsa R para activar o', 'desactivar el SIEMPRE SHINY.', 'Habla con el repartidor del', 'CENTRO POKéMON.'];
+const TOGGLE_LINES = ['R activa/desactiva el 100%', 'shiny (muestra 100% o 0%).', 'Habla con el repartidor del', 'CENTRO POKéMON.'];
 const fixedLines = (oneIn) => (oneIn === 1
     ? ['Todos los POKéMON salvajes', 'salen shiny.', 'Habla con el repartidor del', 'CENTRO POKéMON.']
     : ['Los POKéMON salvajes salen', `shiny 1 de cada ${oneIn}.`, 'Habla con el repartidor del', 'CENTRO POKéMON.']);
@@ -217,10 +217,10 @@ export function buildShinyPayload(found, game, { text = SHINY_TEXT_ES, oneIn = n
 
     if (text) {
         // Textos de los mensajes del script (mismo espacio; el resto se rellena con 0xFF)
-        writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', toggle ? 'R: siempre shiny.' : oneIn ? `Shiny 1/${oneIn}.` : 'R muestra la cadena.'));
+        writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', toggle ? 'R: todo shiny.' : oneIn ? `Shiny 1/${oneIn}.` : 'R muestra la cadena.'));
         writeText(script, 0x92, 0xc8 - 0x92, message('Este regalo no funciona con', 'esta versión del juego.'));
         const chain = toggle
-            ? [...line('Shiny: '), 0xfd, 0x03, 0xff]                              // {STR_VAR_2} = indicador: 1 sí, 0 no
+            ? [...line('Todo shiny: '), 0xfd, 0x03, ...line('%'), 0xff]            // {STR_VAR_2} = indicador: 100 activo, 0 no
             : [...line('Cadena '), 0xfd, 0x02, ...line(': '), 0xfd, 0x03, 0xff];
         if (!toggle && chain.length !== 14) throw new Error('mensaje de cadena de tamaño inesperado');
         if (toggle) script.fill(0xff, 0x3b8, 0x3c8);
