@@ -3,6 +3,7 @@
 // pokeldn, AGPL-3.0, siguiendo las estructuras de hactool). Solo lee las partes necesarias del
 // fichero (File.slice), así que un NSP grande no se carga entero en memoria.
 
+import { locateSymbols } from './shiny.js';
 import { Aes128, ctrCrypt, ecbDecrypt, xtsDecrypt } from './aes.js';
 
 export class ExtractError extends Error {
@@ -223,7 +224,7 @@ export async function extractRom(file, keysText, onProgress = () => {}) {
                     onProgress(`Extrayendo ${f.path} (${(f.size / 1048576).toFixed(1)} MB)…`);
                     const rom = await fs.reader.read(fs.base + fs.dataOffset + f.offset, f.size);
                     const info = checkGbaHeader(rom);
-                    const report = { romfs_path: f.path, size: rom.length, sha1: await sha1(rom), ...info, rom_facts: { client_pool: findClientPool(rom) } };
+                    const report = { romfs_path: f.path, size: rom.length, sha1: await sha1(rom), ...info, rom_facts: { client_pool: findClientPool(rom), shiny: locateSymbols(rom) } };
                     return { rom, report, game: describeGame(info), fileName: f.path.split('/').pop() };
                 }
             }

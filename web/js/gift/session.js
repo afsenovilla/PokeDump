@@ -6,7 +6,7 @@
 // against the Switch.
 
 import { leaderBeacon } from '../cable/leader.js';
-import { MG_LINK, MysteryGiftError } from './mystery-gift.js';
+import { MG_LINK, MysteryGiftError, WonderCardServer } from './mystery-gift.js';
 import { RamDumpServer } from '../dump/ramdump.js';
 
 const ACTIVITY_WONDER_CARD = 21;
@@ -320,9 +320,11 @@ export class GiftSession {
     startServer() {
         const link = this.link;
         link.stage = 'gift';
-        const Server = RamDumpServer;
+        const Server = link.event?.dump ? RamDumpServer : WonderCardServer;
         const server = link.server = new Server({
             probe: link.event?.probe,
+            payload: (game) => link.event?.build?.(game) ?? null,
+            confirm: (reasons, game) => this.ask(reasons, game),
             link: {
                 sendBlock: (data, ident, sent = null) => {
                     if (this.link === link) this.queueBlock(data, ident === MG_LINK.RAM_SCRIPT ? RAM_SCRIPT_REPEAT : BLOCK_REPEAT, sent);

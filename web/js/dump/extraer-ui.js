@@ -1,5 +1,6 @@
 // Interfaz de extraer.html: elige NSP y prod.keys, extrae la ROM en el navegador y enseña el juego.
 import { ExtractError, extractRom } from './nsp.js';
+import { calibrationFrom, saveCalibration } from './shiny-event.js';
 
 const $ = (id) => document.getElementById(id);
 const state = { nsp: null, keys: null, result: null };
@@ -80,6 +81,14 @@ function show({ report, game }) {
     $('r-pool').textContent = good.length
         ? `✓ encontrado (${good.length}): puntero del PC en 0x${good[0].storage_ptr_address_guess.toString(16)}`
         : pools.length ? '⚠ patrón parecido, sin confirmar' : '✗ no encontrado';
+    const shiny = report.rom_facts?.shiny;
+    if (shiny) {
+        const cal = calibrationFrom(shiny, { game_code: report.game_code, revision: report.revision });
+        const total = Object.keys(shiny.found).length;
+        if (ok && cal.ok && saveCalibration(cal.data)) $('r-shiny').textContent = `✓ ${total} direcciones encontradas y guardadas en este navegador: ya puedes usar la tarjeta en la página principal${cal.warnings.length ? ` (avisos: ${cal.warnings.join('; ')})` : ''}`;
+        else if (ok && cal.ok) $('r-shiny').textContent = `✓ ${total} direcciones encontradas, pero el navegador no deja guardarlas`;
+        else $('r-shiny').textContent = `✗ ${total} encontradas${cal.missing.length ? `; faltan ${cal.missing.join(', ')}` : ''}${cal.problems.length ? `; ${cal.problems.join('; ')}` : ''}`;
+    }
     $('advice').textContent = ok
         ? 'Pulsa «Copiar informe» y pégalo en el chat. Con eso basta para saber qué direcciones de memoria usa tu juego.'
         : 'La extracción no dio una ROM de GBA correcta. Copia el informe y cuéntalo.';

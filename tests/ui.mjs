@@ -69,6 +69,27 @@ await page.evaluate(() => {
 assert.match(await page.$eval('#dump-status', (e) => e.textContent), /Punteros correctos/);
 assert.match(await page.$eval('#dump-hint', (e) => e.textContent), /&PC 0x3004230/);
 
+// tarjeta Shiny Hunting: sin calibración no se puede elegir; con ella sí
+assert.equal(await page.$eval('input[value="shiny-hunting"]', (r) => r.disabled), true);
+assert.match(await page.$eval('#shiny-desc', (e) => e.textContent), /Comprobar mi juego/);
+await page.evaluate(async () => {
+    const { SHINY_SLOTS } = await import('/js/dump/shiny.js');
+    const found = {};
+    [...new Set(SHINY_SLOTS.map((x) => x[1]))].forEach((n, i) => { found[n] = 0x03001000 + i * 16 + 1; });
+    localStorage.setItem('pokedump-shiny', JSON.stringify({ gameCode: 'BPGS', revision: 10, found, savedAt: 'x' }));
+});
+await page.reload();
+await page.waitForFunction(() => window.__pokedump);
+assert.equal(await page.$eval('input[value="shiny-hunting"]', (r) => r.disabled), false);
+assert.match(await page.$eval('#shiny-desc', (e) => e.textContent), /LeafGreen \(Spanish\)/);
+assert.equal(await page.$eval('.card-only', (e) => e.hidden), true);
+await page.click('#shiny-choice');
+assert.equal(await page.$eval('.card-only', (e) => e.hidden), false);
+await page.evaluate(() => { const { state, render } = window.__pokedump; state.decision = { reasons: ['same-card'] }; render(); });
+assert.equal(await page.$eval('#decision', (e) => e.hidden), false);
+await page.evaluate(() => { const { state, render } = window.__pokedump; state.esp = { attached: true, info: { chip: 'esp32s3', version: '2.1.4', transport: 'USB' }, baudRate: 921600, port: {} }; state.keys = { complete: true }; state.decision = null; state.giftResult = { outcome: 'sent', player: { name: 'ASH' }, event: { id: 'shiny-hunting' } }; render(); });
+assert.match(await page.$eval('#dump-status', (e) => e.textContent), /Tarjeta enviada a ASH/);
+
 assert.deepEqual(errors, []);
 await browser.close();
 server.close();
