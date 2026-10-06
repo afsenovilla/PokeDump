@@ -3,31 +3,31 @@ plugins {
 }
 
 android {
-    namespace 'io.github.afsenovilla.pokedump'
-    compileSdk 34
+    namespace = 'io.github.afsenovilla.pokedump'
+    compileSdk = 34
 
     defaultConfig {
-        applicationId 'io.github.afsenovilla.pokedump'
-        minSdk 24
-        targetSdk 34
-        versionCode (project.findProperty('versionCode') ?: '1').toInteger()
-        versionName (project.findProperty('versionName') ?: '1.0.0')
+        applicationId = 'io.github.afsenovilla.pokedump'
+        minSdk = 24
+        targetSdk = 34
+        versionCode = Integer.parseInt((project.findProperty('versionCode') ?: '1').toString())
+        versionName = (project.findProperty('versionName') ?: '1.0.0').toString()
     }
 
     signingConfigs {
         release {
             // Llave del proyecto, pública a propósito: sirve para que las versiones nuevas se instalen encima de las anteriores.
-            storeFile file('../keystore/pokedump.jks')
-            storePassword 'pokedump'
-            keyAlias 'pokedump'
-            keyPassword 'pokedump'
+            storeFile = file('../keystore/pokedump.jks')
+            storePassword = 'pokedump'
+            keyAlias = 'pokedump'
+            keyPassword = 'pokedump'
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
+            signingConfig = signingConfigs.release
+            minifyEnabled = false
         }
     }
 
@@ -39,12 +39,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     lint {
-        abortOnError false
+        abortOnError = false
     }
 }
 
