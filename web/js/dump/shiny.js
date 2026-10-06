@@ -106,7 +106,7 @@ export function locateSymbols(rom, ref = SHINY_REF) {
     const rel = (a, b, diff, what) => { if (found[a] !== undefined && found[b] !== undefined && found[a] - found[b] !== diff) warnings.push(`${what}: ${(found[a] - found[b]).toString(16)} en vez de ${diff.toString(16)}`); };
     rel('gIntrTable', 'gMain', 0x450, 'gIntrTable − gMain');
     rel('sLockFieldControls', 'sGlobalScriptContext', 0xec, 'sLockFieldControls − sGlobalScriptContext');
-    return { found, problems, warnings };
+    return { found, problems, warnings, ref: `${Object.keys(ref.funcs).length} funciones, ${Object.keys(ref.vars).length} variables` };
 }
 
 // Dónde va cada dirección en el script de la tarjeta (posición dentro del script de RAM): [offset, símbolo, sumando].

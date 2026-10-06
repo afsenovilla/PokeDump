@@ -85,7 +85,7 @@ function show({ report, game }) {
     if (shiny) {
         const cal = calibrationFrom(shiny, { game_code: report.game_code, revision: report.revision });
         const total = Object.keys(shiny.found).length;
-        if (ok && cal.ok && saveCalibration(cal.data)) $('r-shiny').textContent = `✓ ${total} direcciones encontradas y guardadas en este navegador: ya puedes usar la tarjeta en la página principal${cal.warnings.length ? ` (avisos: ${cal.warnings.join('; ')})` : ''}`;
+        if (ok && cal.ok && saveCalibration(cal.data)) $('r-shiny').textContent = `✓ ${total} direcciones encontradas y guardadas en este navegador (buscador: ${shiny.ref ?? 'versión antigua'}): ya puedes usar las tarjetas en la página principal${cal.warnings.length ? ` (avisos: ${cal.warnings.join('; ')})` : ''}`;
         else if (ok && cal.ok) $('r-shiny').textContent = `✓ ${total} direcciones encontradas, pero el navegador no deja guardarlas`;
         else $('r-shiny').textContent = `✗ ${total} encontradas${cal.missing.length ? `; faltan ${cal.missing.join(', ')}` : ''}${cal.problems.length ? `; ${cal.problems.join('; ')}` : ''}`;
     }
