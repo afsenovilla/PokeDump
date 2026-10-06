@@ -14,7 +14,7 @@ equipo y cajas) importable en [Poketracker](https://github.com/afsenovilla/poket
 | `web/extraer.html` | Comprobación del juego desde el NSP, todo en el navegador (sin Python) |
 | `tools/extract_rom.py` | Saca la ROM de GBA de tu NSP (para conocer tu versión exacta) — [guía](docs/EXTRAER_ROM.md) |
 | `tests/` | Payload en el núcleo de mGBA, extremo a extremo con la «consola» falsa, y unidades |
-| `docs/` | [Guía de prueba](docs/GUIA_PRUEBA.md) · [Formato JSON](docs/FORMATO_JSON.md) · [Extraer ROM](docs/EXTRAER_ROM.md) |
+| `docs/` | [Guía de prueba](docs/GUIA_PRUEBA.md) · [Formato JSON](docs/FORMATO_JSON.md) · [Extraer ROM](docs/EXTRAER_ROM.md) · [Intercambio desde una portátil Android](docs/INTERCAMBIO_PORTATIL.md) |
 
 ## Compatibilidad
 - **Rojo Fuego y Verde Hoja**, en **inglés, francés, alemán, italiano y español** (códigos `BPR?`/`BPG?` con `E F D I S`):
