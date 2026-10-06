@@ -34,14 +34,14 @@ export function clearCalibration() {
 export const SHINY_EVENT_ID = 'shiny-hunting';
 
 // El evento para el WonderCardServer: build(game) devuelve { card, script }, o null si la ROM calibrada no es la de la Switch.
-export function shinyEvent(calibration) {
+export function shinyEvent(calibration, { oneIn = null } = {}) {
     return {
         id: SHINY_EVENT_ID,
         kind: 'card',
-        label: 'Shiny Hunting (probabilidad aumentada)',
+        label: oneIn ? `Shiny Hunting (1/${oneIn})` : 'Shiny Hunting (probabilidad aumentada)',
         build(game) {
             if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
-            const { card, script } = buildShinyPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision });
+            const { card, script } = buildShinyPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn });
             return { card, script };
         },
     };

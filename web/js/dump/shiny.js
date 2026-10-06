@@ -134,8 +134,31 @@ export const SHINY_TEXT_ES = {
     credit: 'GB-Link Team',
 };
 
+// Probabilidad fija en lugar de la cadena: 1/N con N potencia de dos (1 = siempre shiny). Sustituye, en el gancho, el cálculo
+// `umbral = (min(cadena, 30) + 2) × 32` por `umbral = 65536 / N` (se compara con un valor de 16 bits).
+export const SHINY_FIXED_ODDS = [64, 32, 16, 8, 4, 2, 1];
+const THRESHOLD_AT = 0x23c, THRESHOLD_ORIGINAL = '00228842', THRESHOLD_BYTES = 0x12;       // desde `movs r2, #0` hasta `lsls r2, r2, #5`
+
+function patchThreshold(script, oneIn) {
+    if (!SHINY_FIXED_ODDS.includes(oneIn)) throw new Error(`probabilidad no admitida: 1/${oneIn}`);
+    const at = THRESHOLD_AT;
+    const hex = (from, n) => [...script.slice(from, from + n)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (hex(at, 4) !== THRESHOLD_ORIGINAL || hex(at + THRESHOLD_BYTES - 2, 2) !== '5201') throw new Error('la plantilla de la tarjeta no es la esperada (umbral)');
+    const shift = 16 - Math.log2(oneIn);
+    const movs = 0x2201;                          // movs r2, #1
+    const lsls = 0x0012 | (shift << 6);           // lsls r2, r2, #shift  → r2 = 65536 / N
+    const out = [movs & 0xff, movs >> 8, lsls & 0xff, lsls >> 8];
+    while (out.length < THRESHOLD_BYTES) out.push(0xc0, 0x46);    // nop (mov r8, r8)
+    script.set(out, at);
+}
+
+const fixedLines = (oneIn) => (oneIn === 1
+    ? ['Todos los POKéMON salvajes', 'salen shiny.', 'Habla con el repartidor del', 'CENTRO POKéMON.']
+    : ['Los POKéMON salvajes salen', `shiny 1 de cada ${oneIn}.`, 'Habla con el repartidor del', 'CENTRO POKéMON.']);
+
 // found: lo que devuelve locateSymbols; game: { gameCode: 'BPGS', revision: 10 }.
-export function buildShinyPayload(found, game, { text = SHINY_TEXT_ES } = {}) {
+// oneIn: null = el comportamiento original (cadena); un número de SHINY_FIXED_ODDS = probabilidad fija 1/N.
+export function buildShinyPayload(found, game, { text = SHINY_TEXT_ES, oneIn = null } = {}) {
     const missing = [...new Set(SHINY_SLOTS.map((s) => s[1]))].filter((k) => found[k] === undefined);
     if (missing.length) throw new Error(`faltan direcciones del juego: ${missing.join(', ')}`);
     const raw = Uint8Array.from(atob(SHINY_BASE_BASE64.replace(/\s+/g, '')), (c) => c.charCodeAt(0));
@@ -150,9 +173,11 @@ export function buildShinyPayload(found, game, { text = SHINY_TEXT_ES } = {}) {
     script[GATE_REVISION] = game.revision;
     for (const [at, name, add] of SHINY_SLOTS) put32(script, at, (found[name] + add) >>> 0);
 
+    if (oneIn) patchThreshold(script, oneIn);
+
     if (text) {
         // Textos de los mensajes del script (mismo espacio; el resto se rellena con 0xFF)
-        writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', 'R muestra la cadena.'));
+        writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', oneIn ? `Shiny 1/${oneIn}.` : 'R muestra la cadena.'));
         writeText(script, 0x92, 0xc8 - 0x92, message('Este regalo no funciona con', 'esta versión del juego.'));
         const chain = [...line('Cadena '), 0xfd, 0x02, ...line(': '), 0xfd, 0x03, 0xff];
         if (chain.length !== 14) throw new Error('mensaje de cadena de tamaño inesperado');
@@ -160,7 +185,8 @@ export function buildShinyPayload(found, game, { text = SHINY_TEXT_ES } = {}) {
         // Wonder Card: título, subtítulo, cuatro líneas y créditos
         writeText(card, 10, 40, [...line(text.title), 0xff]);
         writeText(card, 50, 40, [...line(text.subtitle), 0xff]);
-        text.lines.slice(0, 4).forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
+        const lines = oneIn ? fixedLines(oneIn) : text.lines;
+        lines.slice(0, 4).forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
         writeText(card, 250, 40, [...line(text.credit), 0xff]);
     }
     return { card, script };

@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { SHINY_SLOTS, buildShinyPayload, locateSymbols } from '../../web/js/dump/shiny.js';
+import { SHINY_FIXED_ODDS, SHINY_SLOTS, buildShinyPayload, locateSymbols } from '../../web/js/dump/shiny.js';
 import { calibrationFrom, shinyEvent } from '../../web/js/dump/shiny-event.js';
 import { MG_LINK, WonderCardServer, messageBlocks, MG_BLOCK_BYTES, parseGameData } from '../../web/js/gift/mystery-gift.js';
 import { decodeText } from '../../web/js/dump/gen3.js';
@@ -106,3 +106,19 @@ for (const build of ['pokefirered_rev1', 'pokefirered', 'pokeleafgreen_rev1']) {
         for (const [name, value] of Object.entries(found)) assert.equal(value, thumb.has(name) ? (sym[alias[name] ?? name] | 1) >>> 0 : sym[name], name);
     });
 }
+
+test('probabilidad fija: parchea el umbral y el resto de la tarjeta queda igual', async () => {
+    const found = synthetic();
+    const base = buildShinyPayload(found, { gameCode: 'BPGS', revision: 10 }).script;
+    for (const n of SHINY_FIXED_ODDS) {
+        const { script } = buildShinyPayload(found, { gameCode: 'BPGS', revision: 10 }, { oneIn: n });
+        const diff = [];
+        script.forEach((b, i) => { if (b !== base[i]) diff.push(i); });
+        assert.ok(diff.length > 0);
+        const shift = 16 - Math.log2(n);
+        assert.equal(script[0x23c], 0x01); assert.equal(script[0x23d], 0x22);                  // movs r2, #1
+        assert.equal(script[0x23e] | (script[0x23f] << 8), 0x0012 | (shift << 6));              // lsls r2, r2, #shift
+        for (let i = 0x240; i < 0x24e; i += 2) assert.equal(script[i] | (script[i + 1] << 8), 0x46c0);
+    }
+    assert.throws(() => buildShinyPayload(found, { gameCode: 'BPGS', revision: 10 }, { oneIn: 3 }), /no admitida/);
+});

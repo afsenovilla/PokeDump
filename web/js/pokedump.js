@@ -303,7 +303,7 @@ function keysLine() {
 // ---------------------------------------------------------------- volcado
 
 const calibration = loadCalibration();
-const eventById = (id) => (id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration) : null) : DUMP_EVENTS.find((e) => e.id === id));
+const eventById = (id) => (id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: Number($('shiny-odds').value) || null }) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
@@ -453,6 +453,8 @@ function renderDump() {
     for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = running || (radio.value === SHINY_EVENT_ID && !calibration);
     const card = chosenMode() === SHINY_EVENT_ID;
     for (const li of document.querySelectorAll('.card-only')) li.hidden = !card;
+    $('odds-row').hidden = !calibration;
+    $('shiny-odds').disabled = running;
     $('shiny-desc').textContent = calibration
         ? `Probabilidad shiny mucho más alta en combates salvajes, con cadena por especie. Calibrada para ${describeGameCode(calibration.gameCode)}. No es de solo lectura: cambia el juego hasta que lo cierres o reinicies.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» una vez, para que la página encuentre las direcciones de tu versión del juego.';
