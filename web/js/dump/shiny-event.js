@@ -1,7 +1,7 @@
 // El evento «Shiny Hunting» de la página principal: usa las direcciones que la página de extracción
 // encontró en la ROM del usuario (se guardan en el navegador) para adaptar la tarjeta a su juego.
 
-import { SHINY_SLOTS, buildLegendaryPayload, buildShinyPayload } from './shiny.js';
+import { SHINY_SLOTS, ULTRA_REQUIRED, buildLegendaryPayload, buildShinyPayload, buildUltraBallPayload } from './shiny.js';
 
 const KEY = 'pokedump-shiny';
 const REQUIRED = [...new Set(SHINY_SLOTS.map((s) => s[1]))];
@@ -59,3 +59,20 @@ export const legendaryEvent = {
         return buildLegendaryPayload(game);
     },
 };
+
+export const ULTRA_EVENT_ID = 'ultra-master';
+
+// ¿Tiene la calibración guardada todo lo que necesita la tarjeta de bolas? (las calibraciones anteriores no tenían gLastUsedItem)
+export const supportsUltra = (calibration) => Boolean(calibration) && ULTRA_REQUIRED.every((k) => Number.isInteger(calibration.found?.[k]));
+
+export function ultraEvent(calibration, { balls = 'ultra' } = {}) {
+    return {
+        id: ULTRA_EVENT_ID,
+        kind: 'card',
+        label: 'Ultra Ball = Master Ball',
+        build(game) {
+            if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
+            return buildUltraBallPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { balls });
+        },
+    };
+}

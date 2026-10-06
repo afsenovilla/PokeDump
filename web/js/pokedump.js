@@ -9,7 +9,7 @@ import { loadManifest } from './manifest.js';
 import { GiftDistribution } from './gift/distribution.js';
 import { describeGameCode } from './gift/mystery-gift.js';
 import { DUMP_EVENTS } from './dump/ramdump.js';
-import { LEGENDARY_EVENT_ID, SHINY_EVENT_ID, legendaryEvent, loadCalibration, shinyEvent } from './dump/shiny-event.js';
+import { LEGENDARY_EVENT_ID, SHINY_EVENT_ID, ULTRA_EVENT_ID, legendaryEvent, loadCalibration, shinyEvent, supportsUltra, ultraEvent } from './dump/shiny-event.js';
 
 const $ = (id) => document.getElementById(id);
 const CHIP_NAMES = { esp32: 'ESP32', esp32c3: 'ESP32-C3', esp32c6: 'ESP32-C6', esp32s3: 'ESP32-S3' };
@@ -308,7 +308,8 @@ function chosenOdds() {
     if (value === 'fixed') return Number(document.querySelector('input[name="fixed"]:checked')?.value) || null;
     return Number(value) || null;
 }
-const eventById = (id) => (id === LEGENDARY_EVENT_ID ? legendaryEvent : id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
+const chosenBalls = () => document.querySelector('input[name="balls"]:checked')?.value ?? 'ultra';
+const eventById = (id) => (id === ULTRA_EVENT_ID ? (supportsUltra(calibration) ? ultraEvent(calibration, { balls: chosenBalls() }) : null) : id === LEGENDARY_EVENT_ID ? legendaryEvent : id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
@@ -316,6 +317,7 @@ function dumpBlocker() {
     if (!state.esp.info) return 'Primero instala el firmware (paso 1).';
     if (newer(GIFT_FIRMWARE, state.esp.info.version)) return `Hace falta el firmware ${GIFT_FIRMWARE} o superior: reinstálalo en el paso 1.`;
     if (!state.keys?.complete) return 'A la placa le faltan las claves (paso 1).';
+    if (chosenMode() === ULTRA_EVENT_ID && !supportsUltra(calibration)) return 'Para la tarjeta de bolas, pasa tu NSP por «Comprobar mi juego» (de nuevo, si ya lo hiciste: ahora busca una dirección más).';
     if (chosenMode() === SHINY_EVENT_ID && !calibration) return 'Para la tarjeta Shiny Hunting, antes pasa tu NSP por «Comprobar mi juego» (una vez).';
     if (state.esp.info.transport === 'UART' && state.esp.baudRate < FAST_BAUD) return 'El firmware de esta placa va a 115200 baudios, que no basta: actualízalo en el paso 1.';
     return null;
@@ -454,13 +456,19 @@ function renderDump() {
     $('stop').hidden = !running;
     $('stop').disabled = state.giftClosing;
     $('dump-dot').className = `dot ${running ? 'busy' : state.giftResult ? (v.tone === 'good' ? 'good' : 'warn') : ''}`.trim();
-    for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = running || (radio.value === SHINY_EVENT_ID && !calibration);
+    for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = running || (radio.value === SHINY_EVENT_ID && !calibration) || (radio.value === ULTRA_EVENT_ID && !supportsUltra(calibration));
     const card = chosenMode() === SHINY_EVENT_ID;
     for (const li of document.querySelectorAll('.card-only')) li.hidden = !card;
+    $('balls-panel').hidden = chosenMode() !== ULTRA_EVENT_ID;
+    for (const input of document.querySelectorAll('#balls-panel input')) input.disabled = running;
+    for (const li of document.querySelectorAll('.ultra-only')) li.hidden = chosenMode() !== ULTRA_EVENT_ID;
     for (const li of document.querySelectorAll('.legendary-only')) li.hidden = chosenMode() !== LEGENDARY_EVENT_ID;
     $('odds-panel').hidden = !(calibration && card);
     $('fixed-chips').hidden = document.querySelector('input[name="odds"]:checked')?.value !== 'fixed';
     for (const input of document.querySelectorAll('#odds-panel input')) input.disabled = running;
+    $('ultra-desc').textContent = supportsUltra(calibration)
+        ? `La ULTRA BALL (o las que elijas) captura siempre, como una MASTER BALL, mientras el juego esté abierto. Calibrada para ${describeGameCode(calibration.gameCode)}. Cambia el juego en memoria; el Pokémon queda en una Master Ball.`
+        : 'Antes pasa tu NSP por «Comprobar mi juego» (si ya lo hiciste, repítelo: ahora busca una dirección más).';
     $('shiny-desc').textContent = calibration
         ? `Probabilidad shiny mucho más alta en combates salvajes, con cadena por especie. Calibrada para ${describeGameCode(calibration.gameCode)}. No es de solo lectura: cambia el juego hasta que lo cierres o reinicies.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» una vez, para que la página encuentre las direcciones de tu versión del juego.';
@@ -529,7 +537,7 @@ function wire() {
     $('start').onclick = giftStart;
     $('stop').onclick = () => giftStop();
     for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', render);
-    for (const radio of document.querySelectorAll('input[name="odds"], input[name="fixed"]')) radio.addEventListener('change', render);
+    for (const radio of document.querySelectorAll('input[name="odds"], input[name="fixed"], input[name="balls"]')) radio.addEventListener('change', render);
     $('decision-yes').onclick = () => { state.gift?.decide(true); state.decision = null; render(); };
     $('decision-no').onclick = () => { state.gift?.decide(false); state.decision = null; render(); };
     $('esp-reinstall').onclick = () => onEspInstall();
