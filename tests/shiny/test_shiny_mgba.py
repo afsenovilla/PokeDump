@@ -267,3 +267,24 @@ def test_r_script_shows_yes_no_in_game_engine():
         run_script_context(core, mem, sym)
         shown.append(bytes(mem.u8[string_var1:string_var1 + 3]))
     assert shown == [bytes([0xCD, 0x6F, 0xFF]), bytes([0xC8, 0xE3, 0xFF])], shown
+
+
+@pytest.mark.parametrize("balls,converted,untouched", [
+    ("ultra", [2], [3, 4, 5, 6]),
+    ("ultra-great", [2, 3], [4, 5, 6]),
+    ("all-standard", [2, 3, 4], [5, 6, 1]),
+])
+def test_ultra_ball_card_turns_balls_into_master_ball(balls, converted, untouched):
+    """Con la tarjeta instalada, el gancho cambia gLastUsedItem por MASTER BALL (1) solo para las bolas elegidas."""
+    core, mem, sym = install_card(balls)
+    last_used = sym["gLastUsedItem"]
+    for item in converted + untouched:
+        mem.u16[last_used] = item
+        for _ in range(3):
+            core.run_frame()
+        expected = 1 if item in converted else item
+        assert mem.u16[last_used] == expected, (item, mem.u16[last_used])
+    counter = mem.u32[sym["gMain"] + 0x24]
+    for _ in range(120):
+        core.run_frame()
+    assert mem.u32[sym["gMain"] + 0x24] - counter >= 100, "el V-Blank dejó de ejecutarse"

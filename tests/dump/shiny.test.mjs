@@ -145,3 +145,17 @@ test('tarjeta Legendarios: comprobación de versión, clearflag de las cuatro ma
     assert.ok(legendaryEvent.build({ gameCode: 'BPRS', revision: 10 }));
     assert.equal(legendaryEvent.build({ gameCode: 'AXVE', revision: 0 }), null);
 });
+
+test('tarjeta Ultra Ball = Master Ball: función del gancho y bolas elegidas', async () => {
+    const { buildUltraBallPayload, ULTRA_BALL_CHOICES } = await import('../../web/js/dump/shiny.js');
+    const found = { gIntrTable: 0x03003000, gMain: 0x03002000, gLastUsedItem: 0x02023d68, sGlobalScriptContext: 0x03000eb0 };
+    for (const [balls, n] of Object.entries(ULTRA_BALL_CHOICES)) {
+        const { script, card } = buildUltraBallPayload(found, { gameCode: 'BPGS', revision: 10 }, { balls });
+        const w = (at) => script[at] | (script[at + 1] << 8);
+        assert.equal(w(0x1e0), 0x4857); assert.equal(w(0x1e6), 0x2900 | n); assert.equal(w(0x1ee), 0x4770);
+        assert.equal(u32(script, 0x340), 0x02023d68);                   // gLastUsedItem en el hueco que lee la función
+        assert.equal(card.length, 332);
+    }
+    assert.throws(() => buildUltraBallPayload({}, { gameCode: 'BPGS', revision: 10 }), /faltan direcciones/);
+    assert.throws(() => buildUltraBallPayload(found, { gameCode: 'BPGS', revision: 10 }, { balls: 'x' }), /no admitidas/);
+});

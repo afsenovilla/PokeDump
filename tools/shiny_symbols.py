@@ -22,7 +22,7 @@ VARS = {   # nombre -> símbolo de pret (dirección que se busca en la ROM desti
     'gChosenActionByBattler': 'gChosenActionByBattler', 'gQuestLogState': 'gQuestLogState',
     'gSpecialVar_0x8004': 'gSpecialVar_0x8004', 'sLockFieldControls': 'sLockFieldControls',
     'sGlobalScriptContextStatus': 'sGlobalScriptContextStatus', 'sGlobalScriptContext': 'sGlobalScriptContext',
-    'gSaveBlock2Ptr': 'gSaveBlock2Ptr',
+    'gSaveBlock2Ptr': 'gSaveBlock2Ptr', 'gLastUsedItem': 'gLastUsedItem',
 }
 ROM_BASE = 0x08000000
 MAX_ANCHORS = 3

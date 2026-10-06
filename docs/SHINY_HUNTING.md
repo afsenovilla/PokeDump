@@ -45,6 +45,15 @@ La web permite cambiar la probabilidad antes de enviar la tarjeta (se parchea el
 En el modo R, para hacer sitio en el código, la cadena cuenta para cualquier especie (en el original solo si coincide con la del encuentro anterior)
 y R ya no comprueba el bloqueo del campo ni muestra la especie. Empieza **apagado**.
 
+## Tarjeta «Ultra Ball = Master Ball»
+
+Reutiliza el instalador y el gancho de V-Blank, pero con una sola función: si `gLastUsedItem` es una de las bolas elegidas (Ultra 2,
+Super 3, Poké 4), la cambia por Master Ball (1) antes de que el combate calcule la captura (`Cmd_handleballthrow`). La mochila ya
+descontó la bola que elegiste (usa `gSpecialVar_ItemId`), así que gastas esa bola y la captura es segura contra Pokémon salvajes. Contra
+Pokémon de entrenador el juego bloquea la bola como siempre. Efectos secundarios: el mensaje puede decir «MASTER BALL» y el Pokémon queda
+registrado en una Master Ball. Necesita una dirección más (`gLastUsedItem`), así que hay que repetir «Comprobar mi juego» una vez.
+Probado en el emulador solo hasta el cambio de `gLastUsedItem` con el gancho instalado; no se ha simulado un lanzamiento completo.
+
 ## Tarjeta «Legendarios» (MEWTWO y las aves)
 
 Otra tarjeta, solo de script del juego (sin código nativo ni calibración): borra `FLAG_FOUGHT_MEWTWO`, `…_MOLTRES`, `…_ARTICUNO` y
