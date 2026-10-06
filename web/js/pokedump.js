@@ -369,7 +369,7 @@ function keepFiles(detail, player) {
     if (detail.save) files.push({ name: fileName(state.game, player, 'sav'), bytes: detail.save, label: 'Guardado para PKHeX', note: '128 KB' });
     if (detail.report) {
         const bytes = new TextEncoder().encode(JSON.stringify(detail.report, null, 2));
-        files.push({ name: fileName(state.game, player, 'json'), bytes, label: 'Datos para Poketracker', note: `${(bytes.length / 1024).toFixed(0)} KB`, report: detail.report });
+        files.push({ name: fileName(state.game, player, 'json'), bytes, label: 'Datos de la partida (JSON)', note: `${(bytes.length / 1024).toFixed(0)} KB`, report: detail.report });
     }
     state.files = files;
     renderResult();
@@ -389,7 +389,7 @@ function resultView(result) {
                 tone: ok ? 'good' : 'warn',
             };
         }
-        case 'backed-up': return { headline: `Partida de ${who} volcada desde la RAM.`, hint: 'Descarga el .sav (PKHeX) y el .json (Poketracker). La Switch no ha guardado nada.', tone: 'good' };
+        case 'backed-up': return { headline: `Partida de ${who} volcada desde la RAM.`, hint: 'Descarga el .sav (PKHeX) y el .json. La Switch no ha guardado nada.', tone: 'good' };
         case 'dumped-partial': return { headline: `Volcado parcial de ${who}: faltan las cajas del PC.`, hint: `Descarga el .json (equipo, Pokédex y entrenador). Motivo: ${REASONS[result.header?.status] ?? 'desconocido'}.`, tone: 'warn' };
         case 'cant-accept': return { headline: 'La Switch no pudo aceptar el enlace.', hint: 'Comprueba que es Rojo Fuego o Verde Hoja y que MYSTERY GIFT está activado en el juego.', tone: 'warn' };
         case 'unsupported': return { headline: `Este juego no es compatible (${describeGameCode(result.game?.gameCode ?? '')}).`, hint: 'PokeDump funciona con Rojo Fuego y Verde Hoja.', tone: 'warn' };

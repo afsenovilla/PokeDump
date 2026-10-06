@@ -1,5 +1,5 @@
 // Partida sintética de Rojo Fuego/Verde Hoja para las pruebas (SaveBlock2, SaveBlock1, PC).
-import { BOX_MON_BYTES, IN_BOX, PARTY_MON_BYTES, SB1_SIZE, SB2_SIZE, ST_SIZE, encodeText } from '../../web/js/dump/gen3.js';
+import { BOX_MONS_AT, BOX_MON_BYTES, IN_BOX, PARTY_MON_BYTES, SB1_SIZE, SB2_SIZE, ST_SIZE, encodeText } from '../../web/js/dump/gen3.js';
 
 const ORDERS = [
     'GAEM', 'GAME', 'GEAM', 'GEMA', 'GMAE', 'GMEA', 'AGEM', 'AGME', 'AEGM', 'AEMG', 'AMGE', 'AMEG',
@@ -64,7 +64,7 @@ export function makeBlocks() {
 
     const storage = new Uint8Array(ST_SIZE);
     storage[0] = 3;
-    const put = (box, slot, mon) => storage.set(encodeMon(mon), 1 + ((box - 1) * IN_BOX + (slot - 1)) * BOX_MON_BYTES);
+    const put = (box, slot, mon) => storage.set(encodeMon(mon), BOX_MONS_AT + ((box - 1) * IN_BOX + (slot - 1)) * BOX_MON_BYTES);
     put(1, 1, { pid: SHINY_PID, otId: OTID, internal: 25, exp: 1000 });                    // Pikachu, nivel 10
     put(1, 30, { pid: PLAIN_PID, otId: OTID, internal: 277, exp: 216, nickname: 'ÁRBOL' });  // Treecko (nac. 252), nivel 6
     put(14, 7, { pid: PLAIN_PID + 1, otId: OTID, internal: 175, exp: 100, egg: true });     // huevo

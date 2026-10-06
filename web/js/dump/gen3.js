@@ -16,6 +16,7 @@ export const SIGNATURE = 0x08012025;
 export const TOTAL_BOXES = 14;
 export const IN_BOX = 30;
 export const BOX_MON_BYTES = 80;
+export const BOX_MONS_AT = 4;        // PokemonStorage: currentBox (u8) + relleno; las cajas empiezan en +4
 export const PARTY_MON_BYTES = 100;
 export const FORMAT = 'pokedump/1';
 
@@ -178,7 +179,7 @@ export function parseBoxes(storage) {
         const name = decodeText(storage.subarray(0x8344 + b * 9, 0x8344 + b * 9 + 9));
         const mons = [];
         for (let s = 0; s < IN_BOX; s++) {
-            const at = 1 + (b * IN_BOX + s) * BOX_MON_BYTES;
+            const at = BOX_MONS_AT + (b * IN_BOX + s) * BOX_MON_BYTES;
             const mon = decodeMon(storage.subarray(at, at + BOX_MON_BYTES));
             if (mon && mon.species) mons.push(monEntry(mon, { box: b + 1, slot: s + 1 }));
         }
