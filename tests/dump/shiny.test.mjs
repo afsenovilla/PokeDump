@@ -148,11 +148,11 @@ test('tarjeta Legendarios: comprobación de versión, clearflag de las cuatro ma
 
 test('tarjeta Ultra Ball = Master Ball: función del gancho y bolas elegidas', async () => {
     const { buildUltraBallPayload, ULTRA_BALL_CHOICES } = await import('../../web/js/dump/shiny.js');
-    const found = { gIntrTable: 0x03003000, gMain: 0x03002000, gLastUsedItem: 0x02023d68, sGlobalScriptContext: 0x03000eb0 };
+    const found = { gIntrTable: 0x03003000, gMain: 0x03002000, gLastUsedItem: 0x02023d68, sGlobalScriptContext: 0x03000eb0, gEnemyParty: 0x02024284, GetMonData: 0x080688c9, SetMonData: 0x0806a21d };
     for (const [balls, n] of Object.entries(ULTRA_BALL_CHOICES)) {
         const { script, card } = buildUltraBallPayload(found, { gameCode: 'BPGS', revision: 10 }, { balls });
         const w = (at) => script[at] | (script[at + 1] << 8);
-        assert.equal(w(0x1e0), 0x4857); assert.equal(w(0x1e6), 0x2900 | n); assert.equal(w(0x1ee), 0x4770);
+        assert.equal(w(0x1e0), 0xb500); assert.equal(w(0x210), 0x2a00 | n); assert.equal(w(0x21a), 0xbd00);
         assert.equal(u32(script, 0x340), 0x02023d68);                   // gLastUsedItem en el hueco que lee la función
         assert.equal(card.length, 332);
     }

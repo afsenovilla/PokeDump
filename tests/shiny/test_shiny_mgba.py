@@ -269,6 +269,52 @@ def test_r_script_shows_yes_no_in_game_engine():
     assert shown == [bytes([0xCD, 0x6F, 0xFF]), bytes([0xC8, 0xE3, 0xFF])], shown
 
 
+def call_game(core, mem, sym, name, r0=0, r1=0, r2=0):
+    """Llama a una función del juego (Thumb) desde el bucle principal con tres argumentos y devuelve r0."""
+    ROUTINE_AT, DONE = 0x02030400, 0x02030FF0
+    asm = f"""
+    .arm
+    .text
+test:
+    push {{r4, lr}}
+    ldr r0, ={r0}
+    ldr r1, ={r1}
+    ldr r2, ={r2}
+    ldr r3, ={sym[name] | 1}
+    mov lr, pc
+    bx r3
+    ldr r1, ={DONE + 8}
+    str r0, [r1]
+    ldr r0, ={DONE}
+    mov r1, #1
+    str r1, [r0]
+    ldr r0, ={sym['gMain'] + 4}
+    ldr r1, ={DONE + 4}
+    ldr r1, [r1]
+    str r1, [r0]
+    pop {{r4, lr}}
+    bx lr
+    .ltorg
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+        src, obj, elf, binf = (os.path.join(tmp, n) for n in ("t.s", "t.o", "t.elf", "t.bin"))
+        open(src, "w").write(asm)
+        subprocess.run(["arm-none-eabi-as", "-mcpu=arm7tdmi", "-o", obj, src], check=True)
+        subprocess.run(["arm-none-eabi-ld", f"-Ttext={ROUTINE_AT:#x}", "-o", elf, obj], check=True, capture_output=True)
+        subprocess.run(["arm-none-eabi-objcopy", "-O", "binary", elf, binf], check=True)
+        code = open(binf, "rb").read()
+    for i, b in enumerate(code):
+        mem.u8[ROUTINE_AT + i] = b
+    mem.u32[DONE] = 0
+    mem.u32[DONE + 4] = mem.u32[sym["gMain"] + 4]
+    mem.u32[sym["gMain"] + 4] = ROUTINE_AT
+    for _ in range(10):
+        core.run_frame()
+        if mem.u32[DONE]:
+            return mem.u32[DONE + 8]
+    raise AssertionError(f"{name} no terminó")
+
+
 @pytest.mark.parametrize("balls,converted,untouched", [
     ("ultra", [2], [3, 4, 5, 6]),
     ("ultra-great", [2, 3], [4, 5, 6]),
@@ -288,3 +334,36 @@ def test_ultra_ball_card_turns_balls_into_master_ball(balls, converted, untouche
     for _ in range(120):
         core.run_frame()
     assert mem.u32[sym["gMain"] + 0x24] - counter >= 100, "el V-Blank dejó de ejecutarse"
+
+
+def test_ultra_ball_card_restores_the_registered_ball():
+    """Al capturar, el juego guarda en el Pokémon la bola de gLastUsedItem (la Master Ball): el gancho la devuelve a la original."""
+    core, mem, sym = install_card("ultra")
+    STATE, WORD, ONE = 0x0203FF60, 0x02030F00, 0x02030F10
+    enemy, last_used = sym["gEnemyParty"], sym["gLastUsedItem"]
+    ball = lambda: (mem.u16[enemy + 0x46] >> 11) & 0xF          # mon a cero: sin cifrar, subestructura de varios en +0x44
+    mem.u32[WORD] = 4                                           # el Pokémon salvaje nace en una Poké Ball
+    call_game(core, mem, sym, "SetMonData", enemy, 38, WORD)
+    assert ball() == 4
+    # 1) lanzamiento de una Ultra Ball: se convierte y se anota la original
+    mem.u16[last_used] = 2
+    for _ in range(3):
+        core.run_frame()
+    assert mem.u16[last_used] == 1 and mem.u32[STATE + 8] == 2
+    # 2) el juego registra la bola (1) al capturar → el gancho la devuelve a la Ultra Ball y deja de estar pendiente
+    mem.u32[ONE] = 1
+    call_game(core, mem, sym, "SetMonData", enemy, 38, ONE)
+    assert ball() == 1
+    for _ in range(3):
+        core.run_frame()
+    assert ball() == 2 and mem.u32[STATE + 8] == 0 and mem.u16[last_used] == 1
+    # 3) una Master Ball de verdad (sin nada pendiente) se queda como Master Ball
+    call_game(core, mem, sym, "SetMonData", enemy, 38, ONE)
+    for _ in range(3):
+        core.run_frame()
+    assert ball() == 1
+    # 4) lanzamiento fallido: sigue anotada, y el siguiente lanzamiento la vuelve a anotar sin problema
+    mem.u16[last_used] = 3
+    for _ in range(3):
+        core.run_frame()
+    assert mem.u16[last_used] == 3          # «ultra» solo convierte la Ultra Ball
