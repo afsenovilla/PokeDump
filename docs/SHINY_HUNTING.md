@@ -45,6 +45,13 @@ La web permite cambiar la probabilidad antes de enviar la tarjeta (se parchea el
 En el modo R, para hacer sitio en el código, la cadena cuenta para cualquier especie (en el original solo si coincide con la del encuentro anterior)
 y R ya no comprueba el bloqueo del campo ni muestra la especie. Empieza **apagado**.
 
+## Tarjeta «Legendarios» (MEWTWO y las aves)
+
+Otra tarjeta, solo de script del juego (sin código nativo ni calibración): borra `FLAG_FOUGHT_MEWTWO`, `…_MOLTRES`, `…_ARTICUNO` y
+`…_ZAPDOS` (0x2BC–0x2BF). Al volver a cargar su mapa, el juego los vuelve a mostrar (`call_if_unset FLAG_FOUGHT_X → clearflag
+FLAG_HIDE_X`). Habla con el repartidor y luego sal del mapa y vuelve a entrar. Las marcas se guardan con tu partida si guardas.
+Se probó con el motor de scripts del juego (`tests/shiny/`): borra esas cuatro marcas y ninguna vecina.
+
 ## Qué se ha comprobado y qué no
 
 - El buscador encuentra las 22 direcciones, sin ningún desajuste, en tres compilaciones distintas de Rojo Fuego y Verde Hoja en
