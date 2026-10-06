@@ -20,11 +20,31 @@ export function saveCalibration(data) {
     try { localStorage.setItem(KEY, JSON.stringify(data)); return true; } catch { return false; }
 }
 
+// Calibraciones ya conocidas: no hace falta pasar el NSP por «Comprobar mi juego» si el juego es uno de estos (misma ROM, mismas direcciones).
+// BPGS rev. 10 = Verde Hoja en español de la Switch (sha1 0d2a0026898375895dfd7ea139ceae90324add8f), del informe de «Comprobar mi juego».
+export const KNOWN_CALIBRATIONS = [{
+    gameCode: 'BPGS', revision: 10, builtin: true, source: 'LeafGreen (Spanish), Switch',
+    found: {
+        Random: 134514373, GetMonData: 134492921, SetMonData: 134494861, CalculateMonStats: 134486925, ScriptContext_SetupScript: 134665193,
+        CB1_Overworld: 134585949, CB2_Overworld: 134586077, SetActionsAndBattlersTurnOrder: 134318129, DismissMapNamePopup: 134855925,
+        AddBagItem: 134863449, gMain: 50340560, gIntrTable: 50341664, gBattleMainFunc: 50348452, gEnemyParty: 33701928,
+        gBattleTypeFlags: 33696584, gBattleOutcome: 33701510, gChosenActionByBattler: 33701240, gQuestLogState: 33795574,
+        gSpecialVar_0x8004: 33779900, sLockFieldControls: 50335900, sGlobalScriptContextStatus: 50335656, sGlobalScriptContext: 50335664,
+        gSaveBlock2Ptr: 50348588, gLastUsedItem: 33701220, gPlayerPartyCount: 33701925, gPlayerParty: 33702528, gPokemonStoragePtr: 50348592,
+    },
+}];
+
+// La calibración que sirve para este juego: la guardada si es de la misma versión, o una conocida.
+export function calibrationFor(saved, game) {
+    const same = (c) => c && c.gameCode === game.gameCode && c.revision === game.revision;
+    return same(saved) ? saved : KNOWN_CALIBRATIONS.find(same) ?? null;
+}
+
 export function loadCalibration() {
     try {
         const data = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-        return data && REQUIRED.every((k) => Number.isInteger(data.found?.[k])) ? data : null;
-    } catch { return null; }
+        return data && REQUIRED.every((k) => Number.isInteger(data.found?.[k])) ? data : KNOWN_CALIBRATIONS[0];
+    } catch { return KNOWN_CALIBRATIONS[0]; }
 }
 
 export function clearCalibration() {
@@ -40,8 +60,9 @@ export function shinyEvent(calibration, { oneIn = null } = {}) {
         kind: 'card',
         label: oneIn === 'toggle' ? 'Shiny Hunting (R alterna siempre shiny)' : oneIn ? `Shiny Hunting (1/${oneIn})` : 'Shiny Hunting (probabilidad aumentada)',
         build(game) {
-            if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
-            const { card, script } = buildShinyPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn });
+            const cal = calibrationFor(calibration, game);
+            if (!cal) return null;
+            const { card, script } = buildShinyPayload(cal.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn });
             return { card, script };
         },
     };
@@ -77,8 +98,9 @@ export function ultraEvent(calibration, { balls = 'ultra', keep = false, shiny =
         kind: 'card',
         label: `Ultra Ball = Master Ball${keep ? ' (no se gasta)' : ''}${shiny ? ' + shiny' : ''}`,
         build(game) {
-            if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
-            return buildUltraBallPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { balls, keep, shiny });
+            const cal = calibrationFor(calibration, game);
+            if (!cal) return null;
+            return buildUltraBallPayload(cal.found, { gameCode: game.gameCode, revision: game.revision }, { balls, keep, shiny });
         },
     };
 }
@@ -95,8 +117,9 @@ export function giftEvent(calibration, { oneIn = 1 } = {}) {
         kind: 'card',
         label: `Regalos shiny (${oneIn === 1 ? 'siempre' : `1/${oneIn}`})`,
         build(game) {
-            if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
-            return buildGiftShinyPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn });
+            const cal = calibrationFor(calibration, game);
+            if (!cal) return null;
+            return buildGiftShinyPayload(cal.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn });
         },
     };
 }

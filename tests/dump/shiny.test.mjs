@@ -231,3 +231,15 @@ test('calibración desde el informe de «Comprobar mi juego»: se acepta el info
     assert.ok(!parseCalibrationReport('{"a":1}').ok);
     assert.ok(!parseCalibrationReport(JSON.stringify({ ...report, game_code: 'AXVE' })).ok);
 });
+
+test('calibración incluida de Verde Hoja español: sirve para todas las tarjetas sin pasar por «Comprobar mi juego»', async () => {
+    const { KNOWN_CALIBRATIONS, loadCalibration, supportsGifts, supportsUltra, supportsKeep, giftEvent, ultraEvent, shinyEvent } = await import('../../web/js/dump/shiny-event.js');
+    const cal = loadCalibration();                                      // sin nada guardado → la incluida
+    assert.equal(cal, KNOWN_CALIBRATIONS[0]);
+    assert.ok(supportsGifts(cal) && supportsUltra(cal) && supportsKeep(cal));
+    const game = { gameCode: 'BPGS', revision: 10 };
+    assert.ok(giftEvent(cal, { oneIn: 1 }).build(game).script.length > 0);
+    assert.ok(ultraEvent(cal, { balls: 'ultra', keep: true, shiny: 1 }).build(game).script.length > 0);
+    assert.ok(shinyEvent(cal, { oneIn: 'toggle' }).build(game).script.length > 0);
+    assert.equal(giftEvent(cal).build({ gameCode: 'BPRS', revision: 10 }), null);       // otro juego: sin calibración
+});
