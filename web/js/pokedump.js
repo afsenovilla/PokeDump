@@ -470,7 +470,7 @@ function renderDump() {
     $('fixed-chips').hidden = document.querySelector('input[name="odds"]:checked')?.value !== 'fixed';
     for (const input of document.querySelectorAll('#odds-panel input')) input.disabled = running;
     $('ultra-desc').textContent = supportsUltra(calibration)
-        ? `La ULTRA BALL (o las que elijas) captura siempre, como una MASTER BALL, mientras el juego esté abierto. Calibrada para ${describeGameCode(calibration.gameCode)}. Cambia el juego en memoria; el Pokémon queda en una Master Ball.`
+        ? `La ULTRA BALL (o las que elijas) captura siempre, como una MASTER BALL, mientras el juego esté abierto. Calibrada para ${describeGameCode(calibration.gameCode)}. Cambia el juego en memoria; el Pokémon se registra en la bola que lanzaste.`
         : 'Antes pasa tu NSP por «Comprobar mi juego» (si ya lo hiciste, repítelo: ahora busca una dirección más).';
     $('shiny-desc').textContent = calibration
         ? `Probabilidad shiny mucho más alta en combates salvajes, con cadena por especie. Calibrada para ${describeGameCode(calibration.gameCode)}. No es de solo lectura: cambia el juego hasta que lo cierres o reinicies.`

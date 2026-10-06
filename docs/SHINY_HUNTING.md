@@ -47,12 +47,17 @@ y R ya no comprueba el bloqueo del campo ni muestra la especie. Empieza **apagad
 
 ## Tarjeta «Ultra Ball = Master Ball»
 
-Reutiliza el instalador y el gancho de V-Blank, pero con una sola función: si `gLastUsedItem` es una de las bolas elegidas (Ultra 2,
-Super 3, Poké 4), la cambia por Master Ball (1) antes de que el combate calcule la captura (`Cmd_handleballthrow`). La mochila ya
-descontó la bola que elegiste (usa `gSpecialVar_ItemId`), así que gastas esa bola y la captura es segura contra Pokémon salvajes. Contra
-Pokémon de entrenador el juego bloquea la bola como siempre. Efectos secundarios: el mensaje puede decir «MASTER BALL» y el Pokémon queda
-registrado en una Master Ball. Necesita una dirección más (`gLastUsedItem`), así que hay que repetir «Comprobar mi juego» una vez.
-Probado en el emulador solo hasta el cambio de `gLastUsedItem` con el gancho instalado; no se ha simulado un lanzamiento completo.
+Reutiliza el instalador y el gancho de V-Blank, pero con una sola función. En cada V-Blank:
+
+1. Si hay una bola convertida pendiente y la bola registrada en `gEnemyParty[0]` es la Master Ball (1) —la escribe el propio juego al capturar,
+   con `gLastUsedItem`—, la devuelve a la bola original con `SetMonData`: el Pokémon queda registrado en la Ultra Ball (o la elegida).
+2. Si `gLastUsedItem` es una de las bolas elegidas (Ultra 2, Super 3, Poké 4), anota cuál era y la cambia por Master Ball (1) antes de
+   que el combate calcule la captura (`Cmd_handleballthrow`). La mochila ya descontó la bola que elegiste (usa `gSpecialVar_ItemId`).
+
+Contra Pokémon de entrenador el juego bloquea la bola como siempre. Efectos secundarios: el mensaje y la animación del lanzamiento pueden
+mostrar la Master Ball; y si tras un lanzamiento fallido usas una Master Ball de verdad en el mismo combate, quedaría anotada como la bola
+anterior. Necesita más direcciones (`gLastUsedItem`), así que hay que repetir «Comprobar mi juego» una vez. Probado en el emulador con las
+funciones reales del juego (conversión, registro y restauración de la bola); no se ha simulado un lanzamiento completo.
 
 ## Tarjeta «Legendarios» (MEWTWO y las aves)
 

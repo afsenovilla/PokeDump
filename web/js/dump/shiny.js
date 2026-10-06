@@ -296,12 +296,63 @@ export function buildLegendaryPayload(game) {
 
 
 // Tarjeta «Ultra Ball = Master Ball»: reutiliza el instalador y el gancho de V-Blank de la tarjeta de Shiny Hunting, pero deja solo
-// una función en el gancho: si gLastUsedItem es una de las bolas elegidas (ULTRA 2, SUPER 3, POKé 4), la cambia por MASTER BALL (1)
-// antes de que el combate calcule la captura. La mochila ya descontó la bola al elegirla (usa gSpecialVar_ItemId), así que se gasta
-// la bola que lanzaste; el Pokémon queda registrado en una Master Ball. Solo cambia la RAM.
+// una función en el gancho. Cada V-Blank:
+//  1. Si hay una bola convertida pendiente (palabra en +8 del estado) y la bola registrada en gEnemyParty[0] es la Master Ball (1) —
+//     la escribe el propio juego al capturar, con gLastUsedItem—, la devuelve a la bola original con SetMonData, así que el Pokémon
+//     queda registrado en la Ultra Ball (o la que fuera) y no en una Master Ball.
+//  2. Si gLastUsedItem es una de las bolas elegidas (ULTRA 2, SUPER 3, POKé 4), anota cuál era y la cambia por MASTER BALL (1) antes de
+//     que el combate calcule la captura (Cmd_handleballthrow). La mochila ya descontó la bola al elegirla (usa gSpecialVar_ItemId).
+// Solo cambia la RAM. Limitación: si tras un lanzamiento fallido usas una Master Ball de verdad en el mismo combate, quedaría anotada
+// como la bola anterior.
 export const ULTRA_BALL_CHOICES = { ultra: 0, 'ultra-great': 1, 'all-standard': 2 };      // → N: ids 2..2+N
-export const ULTRA_REQUIRED = ['gIntrTable', 'gMain', 'gLastUsedItem', 'sGlobalScriptContext'];
-const ULTRA_CARD_ID = 0x5046;
+export const ULTRA_REQUIRED = ['gIntrTable', 'gMain', 'gLastUsedItem', 'sGlobalScriptContext', 'gEnemyParty', 'GetMonData', 'SetMonData'];
+const ULTRA_CARD_ID = 0x5046, MON_DATA_POKEBALL = 38, BX_R3_AT = 0x284;      // BX_R3_AT: «bx r3» del gancho, al que se llega con bl
+
+// Ensamblador mínimo de Thumb para la función del gancho. Posiciones en el archivo de la tarjeta (script + 336).
+function assembleUltraFunction(n) {
+    const pool = (scriptAt) => scriptAt + SCRIPT_AT;                     // dirección en archivo de una palabra del pool de literales
+    const items = [
+        0xb500,                                                          // push {lr}
+        0x68a0,                                                          // ldr  r0, [r4, #8]       bola original pendiente
+        0x2800, { b: 0xd000, to: 'conv' },                               // cmp r0,#0 ; beq conv
+        { ldr: 0, pool: pool(0x344) }, 0x2100 | MON_DATA_POKEBALL, 0x2200, { ldr: 3, pool: pool(0x360) }, { bl: BX_R3_AT },   // GetMonData(&gEnemyParty[0], POKEBALL, 0)
+        0x2801, { b: 0xd100, to: 'conv' },                               // cmp r0,#1 ; bne conv
+        { ldr: 0, pool: pool(0x344) }, 0x2100 | MON_DATA_POKEBALL, 0x0022, 0x3208, { ldr: 3, pool: pool(0x364) }, { bl: BX_R3_AT },       // SetMonData(&gEnemyParty[0], POKEBALL, &estado[8])
+        0x2000, 0x60a0,                                                  // movs r0,#0 ; str r0,[r4,#8]
+        { label: 'conv' },
+        { ldr: 0, pool: pool(0x340) },                                   // ldr r0, =gLastUsedItem
+        0x8801,                                                          // ldrh r1, [r0]
+        0x1e8a,                                                          // subs r2, r1, #2
+        0x2a00 | n, { b: 0xd800, to: 'end' },                            // cmp r2,#n ; bhi end
+        0x60a1,                                                          // str  r1, [r4, #8]       anota la bola original
+        0x2101, 0x8001,                                                  // movs r1,#1 ; strh r1,[r0]
+        { label: 'end' },
+        0xbd00,                                                          // pop {pc}
+    ];
+    const START = 0x330;
+    const labels = {};
+    let pc = START;
+    for (const it of items) { if (it.label) labels[it.label] = pc; else pc += it.bl !== undefined ? 4 : 2; }
+    const out = [];
+    pc = START;
+    for (const it of items) {
+        if (it.label) continue;
+        if (typeof it === 'number') { out.push(it); pc += 2; continue; }
+        if (it.ldr !== undefined) {
+            const imm = (it.pool - ((pc + 4) & ~3)) / 4;
+            if (!Number.isInteger(imm) || imm < 0 || imm > 255) throw new Error('literal fuera de alcance');
+            out.push(0x4800 | (it.ldr << 8) | imm); pc += 2; continue;
+        }
+        if (it.b !== undefined) {
+            const off = (labels[it.to] - (pc + 4)) / 2;
+            if (off < 0 || off > 127) throw new Error('salto fuera de alcance');
+            out.push(it.b | off); pc += 2; continue;
+        }
+        const off = it.bl - (pc + 4);
+        out.push(0xf000 | ((off >> 12) & 0x7ff), 0xf800 | ((off >> 1) & 0x7ff)); pc += 4;
+    }
+    return out;
+}
 
 export function buildUltraBallPayload(found, game, { balls = 'ultra' } = {}) {
     const n = ULTRA_BALL_CHOICES[balls];
@@ -318,24 +369,18 @@ export function buildUltraBallPayload(found, game, { balls = 'ultra' } = {}) {
     script[GATE_REVISION] = game.revision;
     // Direcciones que usan el instalador y el gancho: la entrada de V-Blank, gMain y el buffer de comandos del script (arranque en Thumb).
     for (const [slot, name, add] of SHINY_SLOTS) if (['gIntrTable', 'gMain', 'sGlobalScriptContext'].includes(name)) put32(script, slot, (found[name] + add) >>> 0);
-    put32(script, 0x340, found.gLastUsedItem >>> 0);               // (hueco de gEnemyParty en la plantilla)
+    put32(script, 0x340, found.gLastUsedItem >>> 0);               // huecos del pool que lee la función del gancho
+    put32(script, 0x344, found.gEnemyParty >>> 0);
+    put32(script, 0x360, found.GetMonData >>> 0);
+    put32(script, 0x364, found.SetMonData >>> 0);
     // El gancho llama a tres funciones: se anulan las dos primeras (bl → nop) y la tercera se sustituye.
     patchHalfwords(script, at(0x26c), [0xf000, 0xf80b, 0xf000, 0xf840], [0x46c0, 0x46c0, 0x46c0, 0x46c0], 'llamadas del gancho');
-    patchHalfwords(script, at(0x330), [0xb500, 0x4d57], [0x4857, 0x8801], 'función del gancho');
-    const fn = [
-        0x4857,           // ldr  r0, =gLastUsedItem
-        0x8801,           // ldrh r1, [r0]
-        0x3902,           // subs r1, #2                 ULTRA BALL = 2
-        0x2900 | n,       // cmp  r1, #n
-        0xd801,           // bhi  fin
-        0x2101,           // movs r1, #1                 MASTER BALL
-        0x8001,           // strh r1, [r0]
-        0x4770,           // bx   lr
-    ];
+    patchHalfwords(script, at(0x330), [0xb500, 0x4d57], [0xb500, 0x4d57], 'función del gancho');
+    const fn = assembleUltraFunction(n);
     for (let i = at(0x330); i < at(0x3bc); i += 2) { script[i] = 0xc0; script[i + 1] = 0x46; }
     fn.forEach((w, i) => { script[at(0x330) + 2 * i] = w & 0xff; script[at(0x330) + 2 * i + 1] = w >> 8; });
     const which = { ultra: 'ULTRA BALL', 'ultra-great': 'ULTRA y SUPER BALL', 'all-standard': 'POKé, SUPER y ULTRA BALL' }[balls];
-    writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', 'Bolas = MASTER BALL.'));
+    writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', 'Bola = captura segura.'));
     writeText(script, 0x92, 0xc8 - 0x92, message('Este regalo no funciona con', 'esta versión del juego.'));
     card[0] = ULTRA_CARD_ID & 0xff; card[1] = ULTRA_CARD_ID >> 8;
     card[2] = 150; card[3] = 0;
