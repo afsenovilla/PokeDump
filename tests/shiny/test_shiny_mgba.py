@@ -9,6 +9,7 @@ import pytest
 
 PRET = os.environ.get("PRET_DIR", "")
 ROM = os.path.join(PRET, "pokefirered_rev1.gba")
+ROM_HEAD = open(ROM, 'rb').read(0x100) if os.path.exists(ROM) else b''
 ELF = os.path.join(PRET, "pokefirered_rev1.elf")
 HERE = os.path.dirname(os.path.abspath(__file__))
 pytestmark = pytest.mark.skipif(not os.path.exists(ROM), reason="falta PRET_DIR con pokefirered_rev1.gba")
@@ -19,8 +20,7 @@ def symbols():
     return {p[2]: int(p[0], 16) for p in (l.split() for l in out.splitlines()) if len(p) == 3}
 
 
-@pytest.mark.parametrize("one_in", ["", "16", "1"])
-def test_card_installs_and_game_keeps_running(one_in):
+def install_card(one_in):
     import mgba.core, mgba.log
     mgba.log.silence()
     sym = symbols()
@@ -74,7 +74,6 @@ test:
         mem.u8[ROUTINE_AT + i] = b
     callback2 = mem.u32[sym["gMain"] + 4]
     mem.u32[DONE + 4] = callback2
-    rom_before = bytes(mem.u8[0x08000000:0x08000100])
     mem.u32[sym["gMain"] + 4] = ROUTINE_AT           # el bucle principal la llama en el siguiente fotograma
     for _ in range(20):
         core.run_frame()
@@ -84,10 +83,43 @@ test:
     assert mem.u8[0x0203FF60] == 1, "la tarjeta no marcó la instalación"
     vblank = sym["gIntrTable"] + 0x10
     assert mem.u32[vblank] == 0x0203FC01, f"el gancho no está en la tabla de interrupciones ({mem.u32[vblank]:#x})"
+    return core, mem, sym
+
+
+@pytest.mark.parametrize("one_in", ["", "16", "1", "toggle"])
+def test_card_installs_and_game_keeps_running(one_in):
+    core, mem, sym = install_card(one_in)
     counter = lambda: mem.u32[sym["gMain"] + 0x24]
     before = counter()
     for _ in range(300):
         core.run_frame()
     assert counter() - before >= 250, "el V-Blank dejó de ejecutarse"
     assert core.cpu.pc >= 0x02000000 or (0x08000000 <= core.cpu.pc < 0x0A000000) or True
-    assert bytes(mem.u8[0x08000000:0x08000100]) == rom_before
+    assert bytes(mem.u8[0x08000000:0x08000100]) == ROM_HEAD
+
+
+def test_r_toggles_always_shiny():
+    """La tecla R conmuta el indicador (+2 del estado del gancho) y escribe su valor en la variable 0x8005."""
+    import mgba.core
+    core, mem, sym = install_card("toggle")
+    STATE, HOOK = 0x0203FF60, 0x0203FC00
+    at = lambda script_offset: HOOK + script_offset - 0x104            # el script de RAM se copia a HOOK desde la posición 0x104
+    assert mem.u16[STATE + 2] == 0
+    # El gestor de R exige estar en el campo; el juego está en el título, así que se le dan las condiciones:
+    mem.u32[at(0x380)] = mem.u32[sym["gMain"]]                         # CB1_Overworld := callback1 actual
+    mem.u8[sym["sGlobalScriptContextStatus"]] = 2
+    mem.u8[sym["gQuestLogState"]] = 0
+    var8005 = sym["gSpecialVar_0x8004"] + 2
+    seen = []
+    for _ in range(3):
+        mem.u16[var8005] = 0xBEEF
+        core.set_keys(core.KEY_R) if hasattr(core, "KEY_R") else core.set_keys(1 << 8)
+        for _ in range(4):
+            core.run_frame()
+        core.set_keys()
+        for _ in range(4):
+            core.run_frame()
+        seen.append((mem.u16[STATE + 2], mem.u16[var8005]))
+        mem.u8[sym["sGlobalScriptContextStatus"]] = 2
+    assert [f for f, _ in seen] == [1, 0, 1], seen
+    assert [v for _, v in seen] == [1, 0, 1], seen

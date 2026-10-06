@@ -303,7 +303,7 @@ function keysLine() {
 // ---------------------------------------------------------------- volcado
 
 const calibration = loadCalibration();
-const eventById = (id) => (id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: Number($('shiny-odds').value) || null }) : null) : DUMP_EVENTS.find((e) => e.id === id));
+const eventById = (id) => (id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: $('shiny-odds').value === 'toggle' ? 'toggle' : Number($('shiny-odds').value) || null }) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
