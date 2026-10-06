@@ -9,6 +9,7 @@ import { loadManifest } from './manifest.js';
 import { GiftDistribution } from './gift/distribution.js';
 import { describeGameCode } from './gift/mystery-gift.js';
 import { DUMP_EVENTS } from './dump/ramdump.js';
+import { initTrade } from './intercambio.js';
 
 const $ = (id) => document.getElementById(id);
 const CHIP_NAMES = { esp32: 'ESP32', esp32c3: 'ESP32-C3', esp32c6: 'ESP32-C6', esp32s3: 'ESP32-S3' };
@@ -185,7 +186,7 @@ async function refreshEsp() {
     if (!esp) return;
     try {
         // Resto de una página cerrada a medias: la placa se queda con el puerto del adaptador.
-        if (!state.gift && (await esp.adapterPort()) === 'host') await esp.setAdapterPort('uart');
+        if (!state.gift && !trade?.running() && (await esp.adapterPort()) === 'host') await esp.setAdapterPort('uart');
         await refreshKeys();
     } catch (error) { log('web', describe(error)); }
     render();
@@ -194,6 +195,7 @@ async function refreshEsp() {
 async function dropEsp(problem = null) {
     const device = state.esp;
     if (state.gift) await giftStop();
+    trade?.stop();
     state.esp = null; state.keys = null; state.keysNote = null; state.replacingKeys = false; state.espProblem = problem;
     await device?.close();
     render();
@@ -302,6 +304,7 @@ const eventById = (id) => DUMP_EVENTS.find((e) => e.id === id);
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
+    if (trade?.running()) return 'El intercambio (paso 4) está en marcha: desconéctalo primero.';
     if (!state.esp?.attached) return 'Primero conecta la placa (paso 1).';
     if (!state.esp.info) return 'Primero instala el firmware (paso 1).';
     if (newer(GIFT_FIRMWARE, state.esp.info.version)) return `Hace falta el firmware ${GIFT_FIRMWARE} o superior: reinstálalo en el paso 1.`;
@@ -480,6 +483,7 @@ function render() {
     renderEsp();
     renderDump();
     renderResult();
+    trade?.render();
 }
 
 function unsupported() {
@@ -508,8 +512,17 @@ function wire() {
     window.addEventListener('beforeunload', (e) => { if (state.gift) { e.preventDefault(); e.returnValue = ''; } });
 }
 
+// Intercambio (paso 4): comparte la placa con el volcado; no pueden ir a la vez.
+const trade = initTrade({
+    esp: () => state.esp,
+    keysOk: () => Boolean(state.keys?.complete),
+    blocked: () => (state.gift ? 'El volcado (paso 2) está en marcha: páralo primero.' : state.espPhase !== 'idle' ? 'La placa está ocupada.' : null),
+    log,
+    changed: render,
+});
+
 // Para las pruebas de la interfaz (tests/ui.mjs): estado y pintado.
-window.__pokedump = { state, render, keepFiles };
+window.__pokedump = { state, render, keepFiles, trade };
 
 wire();
 if (!unsupported()) {
