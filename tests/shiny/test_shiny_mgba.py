@@ -130,7 +130,8 @@ def test_r_toggles_always_shiny(variant):
 
 @pytest.mark.parametrize("groups,game_code,clears", [
     ("legendary", "BPRE", True),
-    ("legendary,fossils,hitmon,eevee,lapras,magikarp,snorlax", "BPRE", True),
+    ("legendary,fossils,hitmon,eevee,lapras,magikarp,snorlax,islands", "BPRE", True),
+    ("islands", "BPRE", True),
     ("legendary,fossils", "BPGE", False),          # otro juego: la comprobación de versión corta el script y no se toca nada
 ])
 def test_reset_card_clears_event_flags(groups, game_code, clears):
@@ -147,12 +148,18 @@ def test_reset_card_clears_event_flags(groups, game_code, clears):
     for _ in range(120):
         core.run_frame()
     mem = core.memory
+    call_game(core, mem, sym, "SetBagPocketsPointers")             # el script usa AddBagItem
     flags = mem.u32[sym["gSaveBlock1Ptr"]] + 0xEE0
     wanted = tuple(made["flags"])
-    neighbours = sorted({n for f in wanted for n in (f - 1, f + 1)} - set(wanted))
+    sets = tuple(made["sets"])
+    items = made["items"]
+    neighbours = sorted({n for f in wanted for n in (f - 1, f + 1)} - set(wanted) - set(sets))
+    set_neighbours = sorted({n for f in sets for n in (f - 1, f + 1)} - set(wanted) - set(sets))
     before = bytes(mem.u8[flags:flags + 0x120])
     for f in wanted + tuple(neighbours):
         mem.u8[flags + f // 8] |= 1 << (f % 8)
+    for f in sets + tuple(set_neighbours):
+        mem.u8[flags + f // 8] &= ~(1 << (f % 8)) & 0xFF         # apagadas de partida
     set_state = bytes(mem.u8[flags:flags + 0x120])
     SCRIPT_AT, ROUTINE_AT, DONE = 0x0201C000, 0x02030000, 0x02030FF0
     for i, b in enumerate(script):
@@ -205,9 +212,16 @@ test:
         assert bool(after[f // 8] & (1 << (f % 8))) != clears, f"la marca {f:#x}: {'sigue puesta' if clears else 'se borró'}"
     for f in neighbours:
         assert after[f // 8] & (1 << (f % 8)), f"se borró la marca vecina {f:#x}"
+    for f in sets:
+        assert bool(after[f // 8] & (1 << (f % 8))) == clears, f"la marca {f:#x} de sistema: {'no se puso' if clears else 'se puso'}"
+    for f in set_neighbours:
+        assert not after[f // 8] & (1 << (f % 8)), f"se puso la marca vecina {f:#x}"
+    for item, quantity in items:
+        has = call_game(core, mem, sym, "CheckBagHasItem", item, quantity)
+        assert bool(has) == clears, f"objeto {item}: {'falta' if clears else 'sobra'}"
     if clears:
         changed = [i for i in range(len(after)) if after[i] != set_state[i]]
-        assert changed and all(i in {f // 8 for f in wanted} for i in changed)
+        assert changed and all(i in {f // 8 for f in wanted + sets} for i in changed)
 
 
 def run_script_context(core, mem, sym, calls=8):

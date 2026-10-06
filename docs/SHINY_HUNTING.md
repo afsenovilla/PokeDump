@@ -84,6 +84,7 @@ Las marcas se guardan con tu partida si guardas. Grupos (banderas de `pret/pokef
 | Eevee | `FLAG_GOT_EEVEE` y `FLAG_HIDE_EEVEE_BALL` |
 | Lapras | `FLAG_GOT_LAPRAS_FROM_SILPH` |
 | Magikarp | `FLAG_BOUGHT_MAGIKARP` (se paga otra vez) |
+| Islas de eventos | da `ITEM_MYSTIC_TICKET` y `ITEM_AURORA_TICKET` (`additem`), pone `FLAG_ENABLE_SHIP_NAVEL_ROCK/BIRTH_ISLAND` (banderas de sistema 0x84A/0x84B) y `FLAG_RECEIVED_*_TICKET`, y borra `FLAG_FOUGHT_/…_FLEW_AWAY` de LUGIA, HO-OH y DEOXYS. El barco de Ciudad Carmín solo ofrece estas islas con el Pase Arcoíris (final del juego) |
 | Snorlax | `FLAG_HIDE_ROUTE_12/16_SNORLAX` y `FLAG_WOKE_UP_ROUTE_12_SNORLAX`: reaparece dormido bloqueando el camino; hace falta la Flauta Poké |
 
 Para los fósiles necesitas el fósil en la mochila para revivirlo, y volver a elegir te da otro. Se probó con el motor de scripts del juego

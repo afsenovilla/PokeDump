@@ -275,16 +275,23 @@ export const RESET_GROUPS = {
     lapras: { label: 'LAPRAS de Silph S.A.', short: 'LAPRAS', flags: [0x246] },
     magikarp: { label: 'MAGIKARP de la ruta 4', short: 'MAGIKARP', flags: [0x249] },
     snorlax: { label: 'SNORLAX de las rutas 12 y 16 (hace falta la Flauta Poké)', short: 'SNORLAX', flags: [0x054, 0x253, 0x080] },
+    // Eventos de las islas (Roca Naval: LUGIA y HO-OH; Isla Origen: DEOXYS): da los pases, abre las rutas del barco (FLAG_ENABLE_SHIP_*,
+    // banderas de sistema 0x84A y 0x84B), marca los pases como recibidos y reinicia FLAG_FOUGHT_/…_FLEW_AWAY de los tres.
+    islands: { label: 'Pases de eventos y las islas de LUGIA, HO-OH y DEOXYS', short: 'ISLAS', flags: [0x2f2, 0x2f3, 0x2f5, 0x2f6, 0x2e4, 0x2f7],
+        set: [0x84a, 0x84b, 0x2a7, 0x2a8], items: [[370, 1], [371, 1]] },       // ITEM_MYSTIC_TICKET, ITEM_AURORA_TICKET
 };
 export const LEGENDARY_FLAGS = RESET_GROUPS.legendary.flags;
-const RESET_AT = 0x2b, RESET_LIMIT = 0x104;                      // hueco libre del script: de los loadword del arranque al instalador
+const RESET_AT = 0x2b, RESET_LIMIT = 0x200;                      // hueco libre del script: de los loadword del arranque al instalador
 const GATE_FAIL_POINTERS = [0x0f, 0x1b, 0x27];                  // destino (virtual) del salto cuando no es la versión del juego
 const LEGENDARY_CARD_ID = 0x5044, MEWTWO_ICON = 150;
 
 export function buildResetPayload(game, groups = ['legendary']) {
     const known = groups.filter((g) => RESET_GROUPS[g]);
     if (!known.length || known.length !== groups.length) throw new Error('grupos de eventos no admitidos');
-    const flags = [...new Set(known.flatMap((g) => RESET_GROUPS[g].flags))];
+    const uniq = (list) => [...new Set(list)];
+    const flags = uniq(known.flatMap((g) => RESET_GROUPS[g].flags));
+    const sets = uniq(known.flatMap((g) => RESET_GROUPS[g].set ?? []));
+    const items = uniq(known.flatMap((g) => (RESET_GROUPS[g].items ?? []).map(([id, n]) => `${id}:${n}`))).map((t) => t.split(':').map(Number));
     const raw = Uint8Array.from(atob(SHINY_BASE_BASE64.replace(/\s+/g, '')), (c) => c.charCodeAt(0));
     const card = raw.slice(0, CARD_BYTES);
     const script = raw.slice(SCRIPT_AT);
@@ -294,9 +301,15 @@ export function buildResetPayload(game, groups = ['legendary']) {
     script[GATE_LANG] = code.charCodeAt(3);
     script[GATE_REVISION] = game.revision;
     script.fill(0x00, RESET_AT, RESET_LIMIT);                      // nop
-    flags.forEach((flag, i) => script.set([0x2a, flag & 0xff, flag >> 8], RESET_AT + 3 * i));        // clearflag
+    const commands = [
+        ...flags.map((flag) => [0x2a, flag & 0xff, flag >> 8]),                                       // clearflag
+        ...sets.map((flag) => [0x29, flag & 0xff, flag >> 8]),                                        // setflag
+        ...items.map(([id, n]) => [0x44, id & 0xff, id >> 8, n & 0xff, n >> 8]),                      // additem
+    ];
+    let at = RESET_AT;
+    for (const bytes of commands) { script.set(bytes, at); at += bytes.length; }
     // Después de las banderas: mensaje de éxito, mensaje de «versión no compatible» y sus textos (el salto de la comprobación apunta al segundo).
-    const okBlock = RESET_AT + 3 * flags.length, failBlock = okBlock + 10, okText = failBlock + 10, failText = okText + 40;
+    const okBlock = at, failBlock = okBlock + 10, okText = failBlock + 10, failText = okText + 40;
     if (failText + 54 > RESET_LIMIT) throw new Error('demasiados eventos para el espacio de la tarjeta');
     const vptr = (offset) => [offset & 0xff, (offset >> 8) & 0xff, 0x00, 0x08];                    // 0x08000000 + posición en el script
     script.set([0xbd, ...vptr(okText), 0x66, 0x6d, 0x68, 0x6c, 0x02], okBlock);                    // vmessage ; waitmessage ; waitbuttonpress ; … ; end (como en la plantilla)
@@ -316,7 +329,7 @@ export function buildResetPayload(game, groups = ['legendary']) {
     ['Reactiva eventos de un solo uso:', ...wrapped.slice(0, 2), 'Habla con el repartidor del CENTRO.'].slice(0, 4)
         .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
     writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
-    return { card, script, flags };
+    return { card, script, flags, sets, items };
 }
 
 export const buildLegendaryPayload = (game) => buildResetPayload(game, ['legendary']);

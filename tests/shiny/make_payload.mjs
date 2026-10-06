@@ -10,5 +10,5 @@ const [ballsKeep, odds] = (process.argv[5] ?? '').split('@');
 const balls = ballsKeep.replace('-keep', '');
 const ultraArgs = balls in ULTRA_BALL_CHOICES ? { balls, keep: ballsKeep.endsWith('-keep'), shiny: odds === undefined ? null : odds === 'toggle' ? 'toggle' : Number(odds) } : null;
 const game = { gameCode: process.argv[3], revision: Number(process.argv[4]) };
-const { script, flags } = ultraArgs ? buildUltraBallPayload(found, game, ultraArgs) : (process.argv[5] ?? '').startsWith('reset:') ? buildResetPayload(game, process.argv[5].slice(6).split(',')) : buildShinyPayload(found, { gameCode: process.argv[3], revision: Number(process.argv[4]) }, { oneIn: process.argv[5] === 'toggle' ? 'toggle' : Number(process.argv[5]) || null });
-console.log(JSON.stringify({ script: Buffer.from(script).toString('hex'), found, flags }));
+const { script, flags, sets, items } = ultraArgs ? buildUltraBallPayload(found, game, ultraArgs) : (process.argv[5] ?? '').startsWith('reset:') ? buildResetPayload(game, process.argv[5].slice(6).split(',')) : buildShinyPayload(found, { gameCode: process.argv[3], revision: Number(process.argv[4]) }, { oneIn: process.argv[5] === 'toggle' ? 'toggle' : Number(process.argv[5]) || null });
+console.log(JSON.stringify({ script: Buffer.from(script).toString('hex'), found, flags, sets, items }));
