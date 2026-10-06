@@ -16,7 +16,9 @@ PokeDump es **AGPL-3.0** (ver `LICENSE`) porque reutiliza código AGPL/GPL de:
   descifrado de Pokémon (`pokeldn/frlg/save/mon.py`), `BASE_STATS` y las herramientas de lectura de
   NSP (`tools/switch/xci_read.py`, `romfs_read.py`) de las que deriva `tools/extract_rom.py`.
 - **pret/pokefirered** — <https://github.com/pret/pokefirered>: estructuras y direcciones (tablas de
-  experiencia, diseño del guardado). **mgba_LDN** (Gr3nSkyDragon, MPL-2.0) y **mGBA**
+  experiencia, diseño del guardado) y los patrones de código del localizador de la tarjeta Shiny Hunting
+  (`tools/shiny_build_ref.py`). La tarjeta Shiny Hunting (`web/js/dump/shiny-card.js`) es del GB-Link Team
+  ([gblink-wondercards](https://github.com/GB-Link/gblink-wondercards), GPL-3.0), adaptada por `shiny.js`. **mgba_LDN** (Gr3nSkyDragon, MPL-2.0) y **mGBA**
   (MPL-2.0) para las pruebas del núcleo. esptool-js (Apache-2.0) y picoflash (MIT) vienen con `web/`.
 
 No está afiliado a Nintendo ni a The Pokémon Company. No se incluye ninguna ROM, NSP ni clave.

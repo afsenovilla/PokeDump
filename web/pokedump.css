@@ -41,4 +41,7 @@ pre#log { background:var(--bg); border:1px solid var(--line); border-radius:10px
 .fine { font-size:.88rem; color:var(--muted); }
 ul.plain { margin:.4em 0 0; padding-left:1.25em; } ul.plain li { margin:.3em 0; }
 .notice.warn { border-color:var(--warn); color:var(--ink); background:color-mix(in srgb,var(--warn) 10%,transparent); }
+.decision { border:1px solid var(--warn); border-radius:12px; padding:10px 14px; margin-top:12px; }
+.decision p { margin:.2em 0; }
+.choice small.tag { margin-left:6px; }
 [hidden] { display:none !important; }

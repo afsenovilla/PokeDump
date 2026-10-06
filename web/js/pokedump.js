@@ -9,6 +9,7 @@ import { loadManifest } from './manifest.js';
 import { GiftDistribution } from './gift/distribution.js';
 import { describeGameCode } from './gift/mystery-gift.js';
 import { DUMP_EVENTS } from './dump/ramdump.js';
+import { SHINY_EVENT_ID, loadCalibration, shinyEvent } from './dump/shiny-event.js';
 
 const $ = (id) => document.getElementById(id);
 const CHIP_NAMES = { esp32: 'ESP32', esp32c3: 'ESP32-C3', esp32c6: 'ESP32-C6', esp32s3: 'ESP32-S3' };
@@ -23,6 +24,7 @@ const state = {
     keys: null, keysNote: null, replacingKeys: false,
     gift: null, giftClosing: false, giftStatus: null, giftResult: null, giftNote: null, game: null,
     files: [],                       // descargas del último volcado
+    decision: null,                  // la Switch ya tiene la tarjeta: ¿se envía otra vez?
 };
 
 // ---------------------------------------------------------------- utilidades
@@ -298,7 +300,8 @@ function keysLine() {
 
 // ---------------------------------------------------------------- volcado
 
-const eventById = (id) => DUMP_EVENTS.find((e) => e.id === id);
+const calibration = loadCalibration();
+const eventById = (id) => (id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
@@ -306,6 +309,7 @@ function dumpBlocker() {
     if (!state.esp.info) return 'Primero instala el firmware (paso 1).';
     if (newer(GIFT_FIRMWARE, state.esp.info.version)) return `Hace falta el firmware ${GIFT_FIRMWARE} o superior: reinstálalo en el paso 1.`;
     if (!state.keys?.complete) return 'A la placa le faltan las claves (paso 1).';
+    if (chosenMode() === SHINY_EVENT_ID && !calibration) return 'Para la tarjeta Shiny Hunting, antes pasa tu NSP por «Comprobar mi juego» (una vez).';
     if (state.esp.info.transport === 'UART' && state.esp.baudRate < FAST_BAUD) return 'El firmware de esta placa va a 115200 baudios, que no basta: actualízalo en el paso 1.';
     return null;
 }
@@ -330,8 +334,14 @@ async function giftStart() {
     distribution.addEventListener('result', (e) => {
         if (state.gift !== distribution || state.giftClosing) return;
         state.giftResult = e.detail;
+        state.decision = null;
         if (e.detail.report) keepFiles(e.detail, e.detail.player);
         log('enlace', resultView(e.detail).headline);
+        render();
+    });
+    distribution.addEventListener('decision', (e) => {
+        if (state.gift !== distribution) return;
+        state.decision = e.detail;
         render();
     });
     distribution.addEventListener('failed', (e) => { if (state.gift === distribution) giftStop({ text: `Parado: ${describe(e.detail)}`, tone: 'bad' }); });
@@ -391,8 +401,11 @@ function resultView(result) {
         }
         case 'backed-up': return { headline: `Partida de ${who} volcada desde la RAM.`, hint: 'Descarga el .sav (PKHeX) y el .json. La Switch no ha guardado nada.', tone: 'good' };
         case 'dumped-partial': return { headline: `Volcado parcial de ${who}: faltan las cajas del PC.`, hint: `Descarga el .json (equipo, Pokédex y entrenador). Motivo: ${REASONS[result.header?.status] ?? 'desconocido'}.`, tone: 'warn' };
+        case 'sent': return { headline: `Tarjeta enviada a ${who}.`, hint: 'Cuando la Switch termine de guardarla, habla con el repartidor (el de verde) en la planta de arriba de un Centro Pokémon. Dura hasta cerrar o reiniciar el juego; pulsa R en el campo para ver tu cadena.', tone: 'good' };
+        case 'had-card': return { headline: 'La Switch ya tenía esta tarjeta y no se ha vuelto a enviar.', hint: 'Si quieres enviarla otra vez, pulsa Empezar de nuevo y elige enviarla.', tone: 'warn' };
+        case 'kept-card': return { headline: 'No se ha enviado: en la Switch decidiste conservar la tarjeta que ya tenías.', hint: '', tone: 'warn' };
         case 'cant-accept': return { headline: 'La Switch no pudo aceptar el enlace.', hint: 'Comprueba que es Rojo Fuego o Verde Hoja y que MYSTERY GIFT está activado en el juego.', tone: 'warn' };
-        case 'unsupported': return { headline: `Este juego no es compatible (${describeGameCode(result.game?.gameCode ?? '')}).`, hint: 'PokeDump funciona con Rojo Fuego y Verde Hoja.', tone: 'warn' };
+        case 'unsupported': return { headline: `Este juego no es compatible (${describeGameCode(result.game?.gameCode ?? '')}).`, hint: result.event?.id === SHINY_EVENT_ID ? 'La tarjeta se calibró con otra ROM distinta de la de esta Switch: vuelve a pasar tu NSP por «Comprobar mi juego».' : 'PokeDump funciona con Rojo Fuego y Verde Hoja.', tone: 'warn' };
         case 'lost':
             return state.files.length
                 ? { headline: 'La partida llegó entera antes de que se cortase el enlace.', hint: 'Descarga los ficheros. La Switch puede mostrar un error de comunicación; su partida está como estaba.', tone: 'good' }
@@ -416,6 +429,8 @@ function dumpView() {
         case 'joining': return { headline: 'La Switch se está uniendo…', hint: 'Mantén esta pestaña abierta.', tone: 'good', busy: true };
         case 'linked': case 'checking': case 'checked': return { headline: `Enlazado con ${name}.`, hint: 'Comprobando el juego…', tone: 'good', busy: true };
         case 'backing-up': return { headline: `Volcando la partida: ${status.detail?.done ?? 0} de ${status.detail?.total ?? 53} KB`, hint: 'Mantén la pestaña visible y la Switch cerca de la placa; la Switch muestra «Comunicando…». No se guarda nada.', tone: 'good', fraction: status.detail?.total ? status.detail.done / status.detail.total : true };
+        case 'deciding': case 'asking': return { headline: 'La Switch tiene que decidir…', hint: 'Mira la pantalla de la Switch o responde aquí abajo.', tone: 'good', busy: true };
+        case 'sending': return { headline: 'Enviando la tarjeta…', hint: 'La Switch muestra «Comunicando…». No cierres esta pestaña.', tone: 'good', busy: true };
         case 'closing': return { headline: 'Terminando el enlace…', hint: '', tone: 'good', busy: true };
         default: return { headline: 'Grupo abierto. Esperando a la Switch…', hint: 'En la Switch: MYSTERY GIFT → WONDER CARDS → FRIEND → GBLINK.', tone: 'good', busy: true };
     }
@@ -432,7 +447,14 @@ function renderDump() {
     $('stop').hidden = !running;
     $('stop').disabled = state.giftClosing;
     $('dump-dot').className = `dot ${running ? 'busy' : state.giftResult ? (v.tone === 'good' ? 'good' : 'warn') : ''}`.trim();
-    for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = running;
+    for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = running || (radio.value === SHINY_EVENT_ID && !calibration);
+    const card = chosenMode() === SHINY_EVENT_ID;
+    for (const li of document.querySelectorAll('.card-only')) li.hidden = !card;
+    $('shiny-desc').textContent = calibration
+        ? `Probabilidad shiny mucho más alta en combates salvajes, con cadena por especie. Calibrada para ${describeGameCode(calibration.gameCode)}. No es de solo lectura: cambia el juego hasta que lo cierres o reinicies.`
+        : 'Antes pasa tu NSP por «Comprobar mi juego» una vez, para que la página encuentre las direcciones de tu versión del juego.';
+    $('decision').hidden = !state.decision;
+    if (state.decision) $('decision-text').textContent = 'La Switch ya tiene esta tarjeta. ¿Quieres enviarla otra vez?';
 }
 
 function renderResult() {
@@ -495,6 +517,9 @@ function unsupported() {
 function wire() {
     $('start').onclick = giftStart;
     $('stop').onclick = () => giftStop();
+    for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', render);
+    $('decision-yes').onclick = () => { state.gift?.decide(true); state.decision = null; render(); };
+    $('decision-no').onclick = () => { state.gift?.decide(false); state.decision = null; render(); };
     $('esp-reinstall').onclick = () => onEspInstall();
     $('keys-replace').onclick = () => { state.replacingKeys = true; render(); };
     $('keys-erase').onclick = onKeysErase;
