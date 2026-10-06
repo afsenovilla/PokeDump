@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { SHINY_FIXED_ODDS, SHINY_SLOTS, buildShinyPayload, locateSymbols } from '../../web/js/dump/shiny.js';
+import { SHINY_FIXED_ODDS, SHINY_TOGGLE, SHINY_SLOTS, buildShinyPayload, locateSymbols } from '../../web/js/dump/shiny.js';
 import { calibrationFrom, shinyEvent } from '../../web/js/dump/shiny-event.js';
 import { MG_LINK, WonderCardServer, messageBlocks, MG_BLOCK_BYTES, parseGameData } from '../../web/js/gift/mystery-gift.js';
 import { decodeText } from '../../web/js/dump/gen3.js';
@@ -121,4 +121,15 @@ test('probabilidad fija: parchea el umbral y el resto de la tarjeta queda igual'
         for (let i = 0x240; i < 0x24e; i += 2) assert.equal(script[i] | (script[i + 1] << 8), 0x46c0);
     }
     assert.throws(() => buildShinyPayload(found, { gameCode: 'BPGS', revision: 10 }, { oneIn: 3 }), /no admitida/);
+});
+
+test('modo R alterna siempre shiny: parches del umbral y del gestor de R', async () => {
+    const found = synthetic();
+    const base = buildShinyPayload(found, { gameCode: 'BPGS', revision: 10 }).script;
+    const { script } = buildShinyPayload(found, { gameCode: 'BPGS', revision: 10 }, { oneIn: SHINY_TOGGLE });
+    const w = (at) => script[at] | (script[at + 1] << 8);
+    assert.equal(w(0x23c), 0x88a2); assert.equal(w(0x24c), 0x430a);          // umbral: ldrh r2,[r4,#4] … orrs r2, r1
+    assert.equal(w(0x1c4), 0x8861); assert.equal(w(0x1c8), 0x4051); assert.equal(w(0x1ce), 0x8041);   // conmutador de R
+    assert.notDeepEqual([...script], [...base]);
+    assert.equal(script.length, base.length);
 });

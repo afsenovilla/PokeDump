@@ -38,7 +38,7 @@ export function shinyEvent(calibration, { oneIn = null } = {}) {
     return {
         id: SHINY_EVENT_ID,
         kind: 'card',
-        label: oneIn ? `Shiny Hunting (1/${oneIn})` : 'Shiny Hunting (probabilidad aumentada)',
+        label: oneIn === 'toggle' ? 'Shiny Hunting (R alterna siempre shiny)' : oneIn ? `Shiny Hunting (1/${oneIn})` : 'Shiny Hunting (probabilidad aumentada)',
         build(game) {
             if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
             const { card, script } = buildShinyPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { oneIn });

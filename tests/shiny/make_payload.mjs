@@ -5,5 +5,5 @@ import { locateSymbols, buildShinyPayload } from '../../web/js/dump/shiny.js';
 const rom = new Uint8Array(fs.readFileSync(process.argv[2]));
 const { found, problems } = locateSymbols(rom);
 if (problems.length) { console.error(problems.join('\n')); process.exit(1); }
-const { script } = buildShinyPayload(found, { gameCode: process.argv[3], revision: Number(process.argv[4]) }, { oneIn: Number(process.argv[5]) || null });
+const { script } = buildShinyPayload(found, { gameCode: process.argv[3], revision: Number(process.argv[4]) }, { oneIn: process.argv[5] === 'toggle' ? 'toggle' : Number(process.argv[5]) || null });
 console.log(JSON.stringify({ script: Buffer.from(script).toString('hex'), found }));

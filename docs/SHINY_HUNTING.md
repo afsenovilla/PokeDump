@@ -31,12 +31,28 @@ con el idioma. En vez de tablas fijas, PokeDump las **busca en tu propia ROM**:
 4. Cuando la guarde, habla con el **repartidor** (el de verde) en la planta de arriba de un Centro Pokémon. El efecto dura
    hasta cerrar o reiniciar el juego: tras reiniciar, vuelve a hablar con él. **R** en el campo muestra tu cadena.
 
+## Probabilidad a elegir
+
+La web permite cambiar la probabilidad antes de enviar la tarjeta (se parchea el cálculo del umbral en el gancho):
+
+| Opción | Efecto |
+|---|---|
+| Original | `(min(cadena, 30) + 2) × 32 / 65536`: de 1/1024 con cadena 0 a 1/64 con cadena 30 |
+| Fija 1/64 … 1/2 | umbral fijo `65536 / N`, sin cadena |
+| Siempre shiny | umbral 65536: todo salvaje sale shiny |
+| **R activa/desactiva «siempre shiny»** | la tecla **R** en el campo conmuta un indicador. Apagado = probabilidad original con cadena; encendido = siempre shiny. El mensaje de R dice `Shiny: 1` (activo) o `Shiny: 0` |
+
+En el modo R, para hacer sitio en el código, la cadena cuenta para cualquier especie (en el original solo si coincide con la del encuentro anterior)
+y R ya no comprueba el bloqueo del campo ni muestra la especie. Empieza **apagado**.
+
 ## Qué se ha comprobado y qué no
 
 - El buscador encuentra las 22 direcciones, sin ningún desajuste, en tres compilaciones distintas de Rojo Fuego y Verde Hoja en
   inglés (rev0 y rev1 de Rojo Fuego, rev1 de Verde Hoja), buscando en una usando los patrones de otra.
 - La tarjeta generada se ejecuta en el emulador con el motor de scripts del propio juego y se comprueba que **instala su gancho
   en la interrupción de V-Blank y que el juego sigue funcionando** (`tests/shiny/`, hace falta compilar pret).
+- Los parches de probabilidad se ejecutan en el emulador (`tests/test_shiny_threshold_mgba.py`: umbral exacto en cada modo) y la tecla R
+  conmuta el indicador y su variable con el gancho instalado en un pret (`tests/shiny/`).
 - El envío por Mystery Gift de la tarjeta adaptada se prueba con un cliente simulado (`tests/dump/shiny.test.mjs`).
 - **No se ha probado con una ROM española de la Switch ni con una consola real.** Si el buscador no encuentra alguna
   dirección, la página lo dice y el informe (`informe.json`) lleva el detalle.
