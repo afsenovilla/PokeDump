@@ -409,6 +409,20 @@ def test_ultra_ball_card_keep_refunds_the_ball(variant):
     for _ in range(3):
         core.run_frame()
     assert mem.u16[sym["gLastUsedItem"]] == 1 and quantity(2) == 5
+    mem.u16[sym["gLastUsedItem"]] = 2                              # el juego la escribe otra vez al ejecutar el turno: no se devuelve dos veces
+    for _ in range(3):
+        core.run_frame()
+    assert mem.u16[sym["gLastUsedItem"]] == 1 and quantity(2) == 5
+    for _ in range(2):                                             # y un segundo lanzamiento: se gasta y se devuelve una vez
+        call_game(core, mem, sym, "RemoveBagItem", 2, 1)
+        assert quantity(2) == 4
+        mem.u16[sym["gLastUsedItem"]] = 2
+        for _ in range(3):
+            core.run_frame()
+        mem.u16[sym["gLastUsedItem"]] = 2
+        for _ in range(3):
+            core.run_frame()
+        assert quantity(2) == 5, quantity(2)
     for _ in range(30):                                            # y no se repite sin un lanzamiento nuevo
         core.run_frame()
     assert quantity(2) == 5

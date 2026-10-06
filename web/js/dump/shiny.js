@@ -404,8 +404,11 @@ function assembleUltraFunction(n, keep, cfg = ULTRA_ALONE) {
         0x1e8a,                                                          // subs r2, r1, #2
         0x2a00 | n, { b: 0xd800, to: 'end' },                            // cmp r2,#n ; bhi end
         strState(1),                                                     // str  r1, [r4, #estado]  anota la bola original
-        ...(keep ? [0x0008, 0x2101, { ldr: 3, pool: pool(cfg.add) }, { bl: BX_R3_AT },     // AddBagItem(bola, 1): devuelve la bola que la mochila acaba de gastar
-            { ldr: 0, pool: pool(cfg.lastUsed) }] : []),
+        // El juego escribe gLastUsedItem dos veces por lanzamiento (al elegir la bola y al ejecutar el turno), así que la bola se devuelve solo
+        // una de cada dos veces: un byte en +31 del estado alterna 0/1 y se devuelve cuando valía 0.
+        ...(keep ? [ldrB(2, 4, 31), 0x2301, 0x4053, strB(3, 4, 31), 0x2a00, { b: 0xd100, to: 'norefund' },   // r2 = turno ; r3 = r2 ^ 1 ; guarda ; cmp r2,#0 ; bne norefund
+            0x0008, 0x2101, { ldr: 3, pool: pool(cfg.add) }, { bl: BX_R3_AT },     // AddBagItem(bola, 1): devuelve la bola que la mochila acaba de gastar
+            { label: 'norefund' }, { ldr: 0, pool: pool(cfg.lastUsed) }] : []),
         0x2101, 0x8001,                                                  // movs r1,#1 ; strh r1,[r0]
         { label: 'end' },
         0xbd00,                                                          // pop {pc}
