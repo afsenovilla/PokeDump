@@ -1,7 +1,7 @@
 // El evento «Shiny Hunting» de la página principal: usa las direcciones que la página de extracción
 // encontró en la ROM del usuario (se guardan en el navegador) para adaptar la tarjeta a su juego.
 
-import { SHINY_SLOTS, ULTRA_REQUIRED, buildLegendaryPayload, buildShinyPayload, buildUltraBallPayload } from './shiny.js';
+import { SHINY_SLOTS, ULTRA_REQUIRED, buildResetPayload, buildShinyPayload, buildUltraBallPayload } from './shiny.js';
 
 const KEY = 'pokedump-shiny';
 const REQUIRED = [...new Set(SHINY_SLOTS.map((s) => s[1]))];
@@ -50,15 +50,19 @@ export function shinyEvent(calibration, { oneIn = null } = {}) {
 export const LEGENDARY_EVENT_ID = 'legendary-reset';
 
 // No necesita calibración: es solo script del juego. Vale para Rojo Fuego y Verde Hoja en cualquier idioma y revisión.
-export const legendaryEvent = {
-    id: LEGENDARY_EVENT_ID,
-    kind: 'card',
-    label: 'Legendarios: reaparecer MEWTWO y las aves',
-    build(game) {
-        if (!/^BP[RG][A-Z]$/.test(game.gameCode)) return null;
-        return buildLegendaryPayload(game);
-    },
-};
+// groups: claves de RESET_GROUPS (por defecto, solo los legendarios).
+export function resetEvent(groups = ['legendary']) {
+    return {
+        id: LEGENDARY_EVENT_ID,
+        kind: 'card',
+        label: 'Reiniciar eventos de un solo uso',
+        build(game) {
+            if (!/^BP[RG][A-Z]$/.test(game.gameCode)) return null;
+            return buildResetPayload(game, groups);
+        },
+    };
+}
+export const legendaryEvent = resetEvent();
 
 export const ULTRA_EVENT_ID = 'ultra-master';
 

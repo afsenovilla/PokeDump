@@ -61,8 +61,20 @@
       <label class="choice"><input type="radio" name="mode" value="ultra-master" disabled>
         <div><b>Tarjeta Ultra Ball = Master Ball <small class="tag">modifica el juego</small></b><span id="ultra-desc"></span></div></label>
       <label class="choice"><input type="radio" name="mode" value="legendary-reset">
-        <div><b>Tarjeta Legendarios <small class="tag">modifica tu partida</small></b><span>Hace reaparecer a MEWTWO, ARTICUNO, ZAPDOS y MOLTRES aunque ya los hayas capturado. Borra sus marcas de «ya combatido» en tu partida; si guardas, queda guardado. No hace falta calibrar.</span></div></label>
+        <div><b>Tarjeta Reiniciar eventos <small class="tag">modifica tu partida</small></b><span>Permite repetir eventos de un solo uso: legendarios, fósiles, Hitmons, Eevee, Lapras, Magikarp, Snorlax. Borra sus marcas de «ya hecho» en tu partida; si guardas, queda guardado. No hace falta calibrar.</span></div></label>
     </div>
+    <fieldset class="odds" id="reset-panel" hidden>
+      <legend>Qué eventos reiniciar</legend>
+      <div class="seg">
+        <label><input type="checkbox" name="reset" value="legendary" checked><b>Legendarios</b><small>MEWTWO, ARTICUNO, ZAPDOS y MOLTRES</small></label>
+        <label><input type="checkbox" name="reset" value="fossils"><b>Fósiles</b><small>Elección del Monte Luna, Ámbar Viejo y revivirlos</small></label>
+        <label><input type="checkbox" name="reset" value="hitmon"><b>Hitmons</b><small>HITMONLEE o HITMONCHAN del dojo</small></label>
+        <label><input type="checkbox" name="reset" value="eevee"><b>Eevee</b><small>La Poké Ball de la azotea de Azulona</small></label>
+        <label><input type="checkbox" name="reset" value="lapras"><b>Lapras</b><small>El de Silph S.A.</small></label>
+        <label><input type="checkbox" name="reset" value="magikarp"><b>Magikarp</b><small>El de la ruta 4 (se paga de nuevo)</small></label>
+        <label><input type="checkbox" name="reset" value="snorlax"><b>Snorlax</b><small>Rutas 12 y 16; hace falta la Flauta Poké</small></label>
+      </div>
+    </fieldset>
     <fieldset class="odds" id="balls-panel" hidden>
       <legend>Qué bolas capturan siempre</legend>
       <div class="seg">
@@ -104,7 +116,7 @@
       <li>En la Switch, en el menú principal del juego: <b>MYSTERY GIFT → WONDER CARDS → FRIEND</b> y elige <b>GBLINK</b>.</li>
       <li>Mantén esta pestaña <b>visible</b> y la Switch cerca de la placa.</li>
       <li class="card-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) en la planta de arriba de un Centro Pokémon. El efecto dura <b>hasta cerrar o reiniciar el juego</b>: tras reiniciar, vuelve a hablar con él. En el campo, <b>R</b> muestra tu cadena (o activa y desactiva «siempre shiny» si elegiste «R alterna»).</li>
-      <li class="legendary-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) del Centro Pokémon. Después <b>sal del mapa y vuelve a entrar</b> (Cueva Celeste, Islas Espuma, Central Energía, Monte Ascuas) y el legendario estará allí otra vez.</li>
+      <li class="legendary-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) del Centro Pokémon. Después <b>sal del mapa y vuelve a entrar</b> en el lugar del evento (por ejemplo la Cueva Celeste o el Monte Luna) y volverá a estar disponible. Para los fósiles necesitas el fósil en la mochila; el Snorlax bloquea el camino hasta que lo despiertes con la Flauta Poké.</li>
       <li class="ultra-only" hidden>Con la tarjeta: cuando la Switch la guarde, habla con el <b>repartidor</b> (el de verde) del Centro Pokémon. A partir de ahí, lanzar una de las bolas elegidas a un Pokémon salvaje lo captura siempre, hasta que cierres o reinicies el juego. No funciona contra Pokémon de entrenadores.</li>
     </ol>
   </section>

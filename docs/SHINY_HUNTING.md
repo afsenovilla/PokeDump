@@ -70,12 +70,24 @@ queda a 0, así que apagado = 1/1024. No se puede combinar con el modo original 
 en +20 del estado del gancho (en la sola, en +8) y usa huecos libres del pool de literales. Probado en el emulador: instalación, conversión,
 restauración de la bola, reembolso y la tecla R en las variantes combinadas.
 
-## Tarjeta «Legendarios» (MEWTWO y las aves)
+## Tarjeta «Reiniciar eventos»
 
-Otra tarjeta, solo de script del juego (sin código nativo ni calibración): borra `FLAG_FOUGHT_MEWTWO`, `…_MOLTRES`, `…_ARTICUNO` y
-`…_ZAPDOS` (0x2BC–0x2BF). Al volver a cargar su mapa, el juego los vuelve a mostrar (`call_if_unset FLAG_FOUGHT_X → clearflag
-FLAG_HIDE_X`). Habla con el repartidor y luego sal del mapa y vuelve a entrar. Las marcas se guardan con tu partida si guardas.
-Se probó con el motor de scripts del juego (`tests/shiny/`): borra esas cuatro marcas y ninguna vecina.
+Otra tarjeta, solo de script del juego (sin código nativo ni calibración): borra con `clearflag` las marcas de eventos de un solo uso, a
+elegir. Al volver a cargar el mapa, el propio juego los vuelve a mostrar. Habla con el repartidor y luego sal del mapa y vuelve a entrar.
+Las marcas se guardan con tu partida si guardas. Grupos (banderas de `pret/pokefirered`):
+
+| Grupo | Banderas |
+|---|---|
+| Legendarios | `FLAG_FOUGHT_MEWTWO/MOLTRES/ARTICUNO/ZAPDOS` (0x2BC–0x2BF); al cargar el mapa se vuelven a mostrar (`call_if_unset FLAG_FOUGHT_X → clearflag FLAG_HIDE_X`) |
+| Fósiles | `FLAG_GOT_FOSSIL_FROM_MT_MOON` y `FLAG_GOT_DOME/HELIX_FOSSIL` (el Monte Luna vuelve a mostrar los dos), `FLAG_GOT_OLD_AMBER` + `FLAG_HIDE_OLD_AMBER`, y `FLAG_REVIVED_*` del laboratorio |
+| Hitmons | `FLAG_GOT_HITMON_FROM_DOJO` y `FLAG_HIDE_DOJO_HITMONLEE/CHAN_BALL` |
+| Eevee | `FLAG_GOT_EEVEE` y `FLAG_HIDE_EEVEE_BALL` |
+| Lapras | `FLAG_GOT_LAPRAS_FROM_SILPH` |
+| Magikarp | `FLAG_BOUGHT_MAGIKARP` (se paga otra vez) |
+| Snorlax | `FLAG_HIDE_ROUTE_12/16_SNORLAX` y `FLAG_WOKE_UP_ROUTE_12_SNORLAX`: reaparece dormido bloqueando el camino; hace falta la Flauta Poké |
+
+Para los fósiles necesitas el fósil en la mochila para revivirlo, y volver a elegir te da otro. Se probó con el motor de scripts del juego
+(`tests/shiny/`): con todos los grupos borra solo esas marcas y ninguna vecina, y con un juego de otra versión la comprobación corta el script.
 
 ## Qué se ha comprobado y qué no
 
