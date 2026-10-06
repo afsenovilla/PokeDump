@@ -134,4 +134,4 @@ La tarjeta de Regalos shiny puede, además, reiniciar **un** evento (fósiles, H
 
 ### Parque Safari
 
-La tarjeta de Ultra Ball también convierte la SAFARI BALL (`gLastUsedItem` = 5, que escribe `HandleAction_SafariZoneBallThrow`) en Master Ball al lanzarla, y el Pokémon queda registrado en la Safari Ball. Las Safari Ball no salen de la mochila sino del contador del parque (`gNumSafariBalls`), cuya dirección no está en la calibración, así que ese contador sigue bajando una por lanzamiento (30 al entrar).
+Desde la 1.0.5 todas las bolas (de la Ultra a la Honor Ball y la Safari) se convierten y no hay selector; la tarjeta de Ultra Ball también convierte la SAFARI BALL (`gLastUsedItem` = 5, que escribe `HandleAction_SafariZoneBallThrow`) en Master Ball al lanzarla, y el Pokémon queda registrado en la Safari Ball. Las Safari Ball no salen de la mochila sino del contador del parque (`gNumSafariBalls`), cuya dirección no está en la calibración, así que ese contador sigue bajando una por lanzamiento (30 al entrar).
