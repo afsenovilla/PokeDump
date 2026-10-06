@@ -306,32 +306,38 @@ export function buildLegendaryPayload(game) {
 // como la bola anterior.
 export const ULTRA_BALL_CHOICES = { ultra: 0, 'ultra-great': 1, 'all-standard': 2 };      // → N: ids 2..2+N
 export const ULTRA_REQUIRED = ['gIntrTable', 'gMain', 'gLastUsedItem', 'sGlobalScriptContext', 'gEnemyParty', 'GetMonData', 'SetMonData'];
-const ULTRA_CARD_ID = 0x5046, MON_DATA_POKEBALL = 38, BX_R3_AT = 0x284;      // BX_R3_AT: «bx r3» del gancho, al que se llega con bl
+const ULTRA_CARD_ID = 0x5046, MON_DATA_POKEBALL = 38, BX_R3_AT = 0x284;
+// Dónde va la función y qué huecos del pool de literales usa: sola (sustituye a la función de Shiny Hunting) o junto a shiny (sustituye a la
+// de la cadena, que ya no hace falta con probabilidad fija; la cadena queda a 0 en el modo R, así que apagado = 1/1024).
+const ULTRA_ALONE = { start: 0x330, state: 8, lastUsed: 0x340, enemy: 0x344, get: 0x360, set: 0x364, add: 0x36c };
+const ULTRA_WITH_SHINY = { start: 0x286, state: 20, lastUsed: 0x34c, enemy: 0x340, get: 0x360, set: 0x364, add: 0x350 };      // BX_R3_AT: «bx r3» del gancho, al que se llega con bl
 
 // Ensamblador mínimo de Thumb para la función del gancho. Posiciones en el archivo de la tarjeta (script + 336).
-function assembleUltraFunction(n, keep) {
+function assembleUltraFunction(n, keep, cfg = ULTRA_ALONE) {
     const pool = (scriptAt) => scriptAt + SCRIPT_AT;                     // dirección en archivo de una palabra del pool de literales
+    const ldrState = (rd) => 0x6800 | ((cfg.state / 4) << 6) | (4 << 3) | rd;     // ldr  rd, [r4, #estado]
+    const strState = (rd) => 0x6000 | ((cfg.state / 4) << 6) | (4 << 3) | rd;     // str  rd, [r4, #estado]
     const items = [
         0xb500,                                                          // push {lr}
-        0x68a0,                                                          // ldr  r0, [r4, #8]       bola original pendiente
+        ldrState(0),                                                     // ldr  r0, [r4, #estado]  bola original pendiente
         0x2800, { b: 0xd000, to: 'conv' },                               // cmp r0,#0 ; beq conv
-        { ldr: 0, pool: pool(0x344) }, 0x2100 | MON_DATA_POKEBALL, 0x2200, { ldr: 3, pool: pool(0x360) }, { bl: BX_R3_AT },   // GetMonData(&gEnemyParty[0], POKEBALL, 0)
+        { ldr: 0, pool: pool(cfg.enemy) }, 0x2100 | MON_DATA_POKEBALL, 0x2200, { ldr: 3, pool: pool(cfg.get) }, { bl: BX_R3_AT },   // GetMonData(&gEnemyParty[0], POKEBALL, 0)
         0x2801, { b: 0xd100, to: 'conv' },                               // cmp r0,#1 ; bne conv
-        { ldr: 0, pool: pool(0x344) }, 0x2100 | MON_DATA_POKEBALL, 0x0022, 0x3208, { ldr: 3, pool: pool(0x364) }, { bl: BX_R3_AT },       // SetMonData(&gEnemyParty[0], POKEBALL, &estado[8])
-        0x2000, 0x60a0,                                                  // movs r0,#0 ; str r0,[r4,#8]
+        { ldr: 0, pool: pool(cfg.enemy) }, 0x2100 | MON_DATA_POKEBALL, 0x0022, 0x3200 | cfg.state, { ldr: 3, pool: pool(cfg.set) }, { bl: BX_R3_AT },       // SetMonData(&gEnemyParty[0], POKEBALL, &estado[8])
+        0x2000, strState(0),                                             // movs r0,#0 ; str r0,[r4,#estado]
         { label: 'conv' },
-        { ldr: 0, pool: pool(0x340) },                                   // ldr r0, =gLastUsedItem
+        { ldr: 0, pool: pool(cfg.lastUsed) },                                   // ldr r0, =gLastUsedItem
         0x8801,                                                          // ldrh r1, [r0]
         0x1e8a,                                                          // subs r2, r1, #2
         0x2a00 | n, { b: 0xd800, to: 'end' },                            // cmp r2,#n ; bhi end
-        0x60a1,                                                          // str  r1, [r4, #8]       anota la bola original
-        ...(keep ? [0x0008, 0x2101, { ldr: 3, pool: pool(0x36c) }, { bl: BX_R3_AT },     // AddBagItem(bola, 1): devuelve la bola que la mochila acaba de gastar
-            { ldr: 0, pool: pool(0x340) }] : []),
+        strState(1),                                                     // str  r1, [r4, #estado]  anota la bola original
+        ...(keep ? [0x0008, 0x2101, { ldr: 3, pool: pool(cfg.add) }, { bl: BX_R3_AT },     // AddBagItem(bola, 1): devuelve la bola que la mochila acaba de gastar
+            { ldr: 0, pool: pool(cfg.lastUsed) }] : []),
         0x2101, 0x8001,                                                  // movs r1,#1 ; strh r1,[r0]
         { label: 'end' },
         0xbd00,                                                          // pop {pc}
     ];
-    const START = 0x330;
+    const START = cfg.start;
     const labels = {};
     let pc = START;
     for (const it of items) { if (it.label) labels[it.label] = pc; else pc += it.bl !== undefined ? 4 : 2; }
@@ -356,11 +362,14 @@ function assembleUltraFunction(n, keep) {
     return out;
 }
 
-export function buildUltraBallPayload(found, game, { balls = 'ultra', keep = false } = {}) {
+// shiny: null = solo la bola; 'toggle' o 1/N de SHINY_FIXED_ODDS = además Shiny Hunting con esa probabilidad (la tarjeta de bolas
+// reutiliza el hueco de la función de la cadena, así que no se puede combinar con el modo original de cadena).
+export function buildUltraBallPayload(found, game, { balls = 'ultra', keep = false, shiny = null } = {}) {
     const n = ULTRA_BALL_CHOICES[balls];
     if (n === undefined) throw new Error(`bolas no admitidas: ${balls}`);
     const missing = [...ULTRA_REQUIRED, ...(keep ? ['AddBagItem'] : [])].filter((k) => found[k] === undefined);
     if (missing.length) throw new Error(`faltan direcciones del juego: ${missing.join(', ')}`);
+    if (shiny) return buildUltraWithShiny(found, game, { n, balls, keep, shiny });
     const raw = Uint8Array.from(atob(SHINY_BASE_BASE64.replace(/\s+/g, '')), (c) => c.charCodeAt(0));
     const card = raw.slice(0, CARD_BYTES);
     const script = raw.slice(SCRIPT_AT);
@@ -393,4 +402,29 @@ export function buildUltraBallPayload(found, game, { balls = 'ultra', keep = fal
         .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
     writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
     return { card, script };
+}
+
+
+function buildUltraWithShiny(found, game, { n, balls, keep, shiny }) {
+    if (shiny !== SHINY_TOGGLE && !SHINY_FIXED_ODDS.includes(shiny)) throw new Error('con las bolas solo se puede combinar una probabilidad fija o el modo R');
+    const { card, script } = buildShinyPayload(found, game, { oneIn: shiny });
+    const at = (file) => file - SCRIPT_AT;
+    // Función de la cadena (0x286…0x2f4) → función de las bolas. En el modo R se mantiene el gestor de R; si no, se anula su llamada.
+    patchHalfwords(script, at(0x286), [0xb500, 0x7860], [0xb500, 0x7860], 'función de la cadena');
+    if (shiny !== SHINY_TOGGLE) patchHalfwords(script, at(0x270), [0xf000, 0xf840], [0x46c0, 0x46c0], 'llamada al gestor de R');
+    for (let i = at(0x286); i < at(0x2f4); i += 2) { script[i] = 0xc0; script[i + 1] = 0x46; }
+    assembleUltraFunction(n, keep, ULTRA_WITH_SHINY).forEach((w, i) => { script[at(0x286) + 2 * i] = w & 0xff; script[at(0x286) + 2 * i + 1] = w >> 8; });
+    put32(script, ULTRA_WITH_SHINY.lastUsed, found.gLastUsedItem >>> 0);
+    if (keep) put32(script, ULTRA_WITH_SHINY.add, found.AddBagItem >>> 0);
+    const odds = shiny === SHINY_TOGGLE ? 'R alterna el siempre shiny' : shiny === 1 ? 'siempre shiny' : `shiny 1/${shiny}`;
+    writeText(script, 0x6a, 0x92 - 0x6a, message('Hasta reiniciar.', shiny === SHINY_TOGGLE ? 'Bola segura. R: shiny.' : 'Bola segura y shiny.'));
+    const which = { ultra: 'ULTRA BALL', 'ultra-great': 'ULTRA y SUPER BALL', 'all-standard': 'POKé, SUPER y ULTRA BALL' }[balls];
+    card[0] = ULTRA_CARD_ID & 0xff; card[1] = ULTRA_CARD_ID >> 8;
+    card[2] = 150; card[3] = 0;
+    writeText(card, 10, 40, [...line('BOLA SEGURA + SHINY'), 0xff]);
+    writeText(card, 50, 40, [...line(odds), 0xff]);
+    [`${which} captura siempre`, keep ? 'y no se gasta. Hasta cerrar' : 'como una MASTER BALL. Hasta', 'cerrar el juego. Habla con el', 'repartidor del CENTRO POKéMON.']
+        .forEach((l, i) => writeText(card, 90 + 40 * i, 40, [...line(l), 0xff]));
+    writeText(card, 250, 40, [...line('PokeDump'), 0xff]);
+    return { card, script, summary: `${which}${keep ? ' (no se gasta)' : ''} + ${odds}` };
 }

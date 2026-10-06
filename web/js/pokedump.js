@@ -306,12 +306,13 @@ const calibration = loadCalibration();
 // Probabilidad elegida en el panel: null = original (cadena), 'toggle' = R alterna, o 1/N fija.
 function chosenOdds() {
     const value = document.querySelector('input[name="odds"]:checked')?.value ?? '';
+    if (value === 'none') return null;
     if (value === 'toggle') return 'toggle';
     if (value === 'fixed') return Number(document.querySelector('input[name="fixed"]:checked')?.value) || null;
     return Number(value) || null;
 }
 const chosenBalls = () => document.querySelector('input[name="balls"]:checked')?.value ?? 'ultra';
-const eventById = (id) => (id === ULTRA_EVENT_ID ? (supportsUltra(calibration) ? ultraEvent(calibration, { balls: chosenBalls(), keep: $('balls-keep').checked }) : null) : id === LEGENDARY_EVENT_ID ? legendaryEvent : id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
+const eventById = (id) => (id === ULTRA_EVENT_ID ? (supportsUltra(calibration) ? ultraEvent(calibration, { balls: chosenBalls(), keep: $('balls-keep').checked, shiny: chosenOdds() }) : null) : id === LEGENDARY_EVENT_ID ? legendaryEvent : id === SHINY_EVENT_ID ? (calibration ? shinyEvent(calibration, { oneIn: chosenOdds() }) : null) : DUMP_EVENTS.find((e) => e.id === id));
 const chosenMode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function dumpBlocker() {
@@ -467,7 +468,13 @@ function renderDump() {
     if (!supportsKeep(calibration)) { $('balls-keep').checked = false; $('balls-keep').disabled = true; }
     for (const li of document.querySelectorAll('.ultra-only')) li.hidden = chosenMode() !== ULTRA_EVENT_ID;
     for (const li of document.querySelectorAll('.legendary-only')) li.hidden = chosenMode() !== LEGENDARY_EVENT_ID;
-    $('odds-panel').hidden = !(calibration && card);
+    const ultra = chosenMode() === ULTRA_EVENT_ID;
+    $('odds-panel').hidden = !(calibration && (card || ultra));
+    $('odds-legend').textContent = ultra ? 'Además, probabilidad shiny' : 'Probabilidad shiny';
+    for (const el of document.querySelectorAll('.ultra-opt')) el.hidden = !ultra;
+    for (const el of document.querySelectorAll('.shiny-opt')) el.hidden = ultra;
+    const oddsNow = document.querySelector('input[name="odds"]:checked');
+    if (oddsNow && oddsNow.closest('label').hidden) document.querySelector(ultra ? 'input[name="odds"][value="none"]' : 'input[name="odds"][value=""]').checked = true;
     $('fixed-chips').hidden = document.querySelector('input[name="odds"]:checked')?.value !== 'fixed';
     for (const input of document.querySelectorAll('#odds-panel input')) input.disabled = running;
     $('ultra-desc').textContent = supportsUltra(calibration)

@@ -88,7 +88,7 @@ test:
     return core, mem, sym
 
 
-@pytest.mark.parametrize("one_in", ["", "16", "1", "toggle"])
+@pytest.mark.parametrize("one_in", ["", "16", "1", "toggle", "ultra@16", "ultra-keep@toggle"])
 def test_card_installs_and_game_keeps_running(one_in):
     core, mem, sym = install_card(one_in)
     counter = lambda: mem.u32[sym["gMain"] + 0x24]
@@ -100,10 +100,11 @@ def test_card_installs_and_game_keeps_running(one_in):
     assert bytes(mem.u8[0x08000000:0x08000100]) == ROM_HEAD
 
 
-def test_r_toggles_always_shiny():
+@pytest.mark.parametrize("variant", ["toggle", "ultra-keep@toggle"])
+def test_r_toggles_always_shiny(variant):
     """R conmuta el indicador (0 ↔ 60) y el script de R, con el motor del juego, deja «Sí»/«No» en la cadena 1 del script."""
     import mgba.core
-    core, mem, sym = install_card("toggle")
+    core, mem, sym = install_card(variant)
     STATE, HOOK = 0x0203FF60, 0x0203FC00
     at = lambda script_offset: HOOK + script_offset - 0x104            # el script de RAM se copia a HOOK desde la posición 0x104
     assert mem.u16[STATE + 2] == 0
@@ -336,9 +337,10 @@ def test_ultra_ball_card_turns_balls_into_master_ball(balls, converted, untouche
     assert mem.u32[sym["gMain"] + 0x24] - counter >= 100, "el V-Blank dejó de ejecutarse"
 
 
-def test_ultra_ball_card_restores_the_registered_ball():
+@pytest.mark.parametrize("variant,state_at", [("ultra", 8), ("ultra@1", 20), ("ultra@toggle", 20)])
+def test_ultra_ball_card_restores_the_registered_ball(variant, state_at):
     """Al capturar, el juego guarda en el Pokémon la bola de gLastUsedItem (la Master Ball): el gancho la devuelve a la original."""
-    core, mem, sym = install_card("ultra")
+    core, mem, sym = install_card(variant)
     STATE, WORD, ONE = 0x0203FF60, 0x02030F00, 0x02030F10
     enemy, last_used = sym["gEnemyParty"], sym["gLastUsedItem"]
     ball = lambda: (mem.u16[enemy + 0x46] >> 11) & 0xF          # mon a cero: sin cifrar, subestructura de varios en +0x44
@@ -349,14 +351,14 @@ def test_ultra_ball_card_restores_the_registered_ball():
     mem.u16[last_used] = 2
     for _ in range(3):
         core.run_frame()
-    assert mem.u16[last_used] == 1 and mem.u32[STATE + 8] == 2
+    assert mem.u16[last_used] == 1 and mem.u32[STATE + state_at] == 2
     # 2) el juego registra la bola (1) al capturar → el gancho la devuelve a la Ultra Ball y deja de estar pendiente
     mem.u32[ONE] = 1
     call_game(core, mem, sym, "SetMonData", enemy, 38, ONE)
     assert ball() == 1
     for _ in range(3):
         core.run_frame()
-    assert ball() == 2 and mem.u32[STATE + 8] == 0 and mem.u16[last_used] == 1
+    assert ball() == 2 and mem.u32[STATE + state_at] == 0 and mem.u16[last_used] == 1
     # 3) una Master Ball de verdad (sin nada pendiente) se queda como Master Ball
     call_game(core, mem, sym, "SetMonData", enemy, 38, ONE)
     for _ in range(3):
@@ -369,9 +371,10 @@ def test_ultra_ball_card_restores_the_registered_ball():
     assert mem.u16[last_used] == 3          # «ultra» solo convierte la Ultra Ball
 
 
-def test_ultra_ball_card_keep_refunds_the_ball():
+@pytest.mark.parametrize("variant", ["ultra-keep", "ultra-keep@1"])
+def test_ultra_ball_card_keep_refunds_the_ball(variant):
     """Con «no gastar», al convertir la bola el gancho llama a AddBagItem y la mochila recupera la bola que acaba de gastar."""
-    core, mem, sym = install_card("ultra-keep")
+    core, mem, sym = install_card(variant)
     call_game(core, mem, sym, "SetBagPocketsPointers")
     def quantity(item):
         # CheckBagHasItem(item, n) es cierto si hay al menos n: se busca la cantidad exacta probando

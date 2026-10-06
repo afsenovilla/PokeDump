@@ -67,14 +67,14 @@ export const supportsUltra = (calibration) => Boolean(calibration) && ULTRA_REQU
 
 export const supportsKeep = (calibration) => supportsUltra(calibration) && Number.isInteger(calibration.found?.AddBagItem);
 
-export function ultraEvent(calibration, { balls = 'ultra', keep = false } = {}) {
+export function ultraEvent(calibration, { balls = 'ultra', keep = false, shiny = null } = {}) {
     return {
         id: ULTRA_EVENT_ID,
         kind: 'card',
-        label: keep ? 'Ultra Ball = Master Ball (no se gasta)' : 'Ultra Ball = Master Ball',
+        label: `Ultra Ball = Master Ball${keep ? ' (no se gasta)' : ''}${shiny ? ' + shiny' : ''}`,
         build(game) {
             if (game.gameCode !== calibration.gameCode || game.revision !== calibration.revision) return null;
-            return buildUltraBallPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { balls, keep });
+            return buildUltraBallPayload(calibration.found, { gameCode: game.gameCode, revision: game.revision }, { balls, keep, shiny });
         },
     };
 }
