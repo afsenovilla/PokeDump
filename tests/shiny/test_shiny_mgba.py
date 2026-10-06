@@ -123,8 +123,8 @@ def test_r_toggles_always_shiny():
             core.run_frame()
         seen.append((mem.u16[STATE + 2], mem.u16[var8005]))
         mem.u8[sym["sGlobalScriptContextStatus"]] = 2
-    assert [f for f, _ in seen] == [1, 0, 1], seen
-    assert [v for _, v in seen] == [1, 0, 1], seen
+    assert [f for f, _ in seen] == [100, 0, 100], seen
+    assert [v for _, v in seen] == [100, 0, 100], seen
 
 
 def test_legendary_card_clears_fought_flags():

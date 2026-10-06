@@ -40,7 +40,7 @@ La web permite cambiar la probabilidad antes de enviar la tarjeta (se parchea el
 | Original | `(min(cadena, 30) + 2) × 32 / 65536`: de 1/1024 con cadena 0 a 1/64 con cadena 30 |
 | Fija 1/64 … 1/2 | umbral fijo `65536 / N`, sin cadena |
 | Siempre shiny | umbral 65536: todo salvaje sale shiny |
-| **R activa/desactiva «siempre shiny»** | la tecla **R** en el campo conmuta un indicador. Apagado = probabilidad original con cadena; encendido = siempre shiny. El mensaje de R dice `Shiny: 1` (activo) o `Shiny: 0` |
+| **R activa/desactiva «siempre shiny»** | la tecla **R** en el campo conmuta un indicador. Apagado = probabilidad original con cadena; encendido = siempre shiny. El mensaje de R dice `Todo shiny: 100%` (activo) o `Todo shiny: 0%` |
 
 En el modo R, para hacer sitio en el código, la cadena cuenta para cualquier especie (en el original solo si coincide con la del encuentro anterior)
 y R ya no comprueba el bloqueo del campo ni muestra la especie. Empieza **apagado**.

@@ -129,7 +129,7 @@ test('modo R alterna siempre shiny: parches del umbral y del gestor de R', async
     const { script } = buildShinyPayload(found, { gameCode: 'BPGS', revision: 10 }, { oneIn: SHINY_TOGGLE });
     const w = (at) => script[at] | (script[at + 1] << 8);
     assert.equal(w(0x23c), 0x88a2); assert.equal(w(0x24c), 0x430a);          // umbral: ldrh r2,[r4,#4] … orrs r2, r1
-    assert.equal(w(0x1c4), 0x8861); assert.equal(w(0x1c8), 0x4051); assert.equal(w(0x1ce), 0x8041);   // conmutador de R
+    assert.equal(w(0x1c4), 0x8861); assert.equal(w(0x1c6), 0x2264); assert.equal(w(0x1c8), 0x4051); assert.equal(w(0x1ce), 0x8041);   // conmutador de R
     assert.notDeepEqual([...script], [...base]);
     assert.equal(script.length, base.length);
 });
