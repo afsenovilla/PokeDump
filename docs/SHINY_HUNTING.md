@@ -62,6 +62,14 @@ mostrar la Master Ball; y si tras un lanzamiento fallido usas una Master Ball de
 anterior. Necesita más direcciones (`gLastUsedItem`), así que hay que repetir «Comprobar mi juego» una vez. Probado en el emulador con las
 funciones reales del juego (conversión, registro y restauración de la bola); no se ha simulado un lanzamiento completo.
 
+### Bolas + shiny en la misma tarjeta
+
+La tarjeta de bolas puede llevar además Shiny Hunting con probabilidad fija (1/64 … siempre shiny) o con el modo «R alterna». Para hacer
+sitio, la función de las bolas ocupa el hueco de la función de la cadena (que con probabilidad fija no hace falta); en el modo R la cadena
+queda a 0, así que apagado = 1/1024. No se puede combinar con el modo original de cadena. En la variante combinada la bola pendiente se anota
+en +20 del estado del gancho (en la sola, en +8) y usa huecos libres del pool de literales. Probado en el emulador: instalación, conversión,
+restauración de la bola, reembolso y la tecla R en las variantes combinadas.
+
 ## Tarjeta «Legendarios» (MEWTWO y las aves)
 
 Otra tarjeta, solo de script del juego (sin código nativo ni calibración): borra `FLAG_FOUGHT_MEWTWO`, `…_MOLTRES`, `…_ARTICUNO` y

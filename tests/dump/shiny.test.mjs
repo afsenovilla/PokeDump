@@ -162,3 +162,22 @@ test('tarjeta Ultra Ball = Master Ball: función del gancho y bolas elegidas', a
     assert.throws(() => buildUltraBallPayload({}, { gameCode: 'BPGS', revision: 10 }), /faltan direcciones/);
     assert.throws(() => buildUltraBallPayload(found, { gameCode: 'BPGS', revision: 10 }, { balls: 'x' }), /no admitidas/);
 });
+
+test('Ultra Ball + shiny: la función de las bolas ocupa el hueco de la cadena y el resto es la tarjeta de shiny', async () => {
+    const { buildUltraBallPayload } = await import('../../web/js/dump/shiny.js');
+    const found = { ...synthetic(), gLastUsedItem: 0x02023d68, AddBagItem: 0x0809a099 };
+    const game = { gameCode: 'BPGS', revision: 10 };
+    const w = (b, at) => b[at] | (b[at + 1] << 8);
+    for (const shiny of [1, 16, 'toggle']) {
+        const { script, card, summary } = buildUltraBallPayload(found, game, { balls: 'ultra', keep: true, shiny });
+        assert.equal(w(script, 0x136), 0xb500);                          // función de las bolas en 0x286 (archivo) = 0x136 (script)
+        assert.equal(u32(script, 0x34c), 0x02023d68); assert.equal(u32(script, 0x350), 0x0809a099);
+        assert.equal(u32(script, 0x340), found.gEnemyParty);              // compartido con la función de shiny
+        assert.equal(card.length, 332);
+        assert.match(summary, /no se gasta/);
+        const base = buildShinyPayload(found, game, { oneIn: shiny }).script;
+        assert.deepEqual([...script.slice(0x1e0, 0x23c)], [...base.slice(0x1e0, 0x23c)]);       // función de shiny, intacta
+        assert.equal(w(script, 0x120) === 0x46c0, shiny !== 'toggle');    // llamada al gestor de R: anulada salvo en el modo R
+    }
+    assert.throws(() => buildUltraBallPayload(found, game, { shiny: 3 }), /probabilidad fija/);
+});

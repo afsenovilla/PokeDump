@@ -73,9 +73,10 @@
       <div class="chips"><label><input type="checkbox" id="balls-keep"><span>No gastar la bola</span></label> <small class="hint">Te devuelve la bola al lanzarla. Necesitas tener al menos una.</small></div>
     </fieldset>
     <fieldset class="odds" id="odds-panel" hidden>
-      <legend>Probabilidad shiny</legend>
+      <legend id="odds-legend">Probabilidad shiny</legend>
       <div class="seg">
-        <label><input type="radio" name="odds" value="" checked><b>Original</b><small>1/1024, sube con la cadena hasta 1/64</small></label>
+        <label class="ultra-opt" hidden><input type="radio" name="odds" value="none"><b>Sin shiny</b><small>Solo las bolas</small></label>
+        <label class="shiny-opt"><input type="radio" name="odds" value="" checked><b>Original</b><small>1/1024, sube con la cadena hasta 1/64</small></label>
         <label><input type="radio" name="odds" value="toggle"><b>R alterna</b><small>R activa o desactiva «siempre shiny» (dice Sí o No)</small></label>
         <label><input type="radio" name="odds" value="fixed"><b>Fija</b><small>Siempre la misma, sin cadena</small></label>
         <label><input type="radio" name="odds" value="1"><b>Siempre shiny</b><small>Todo salvaje sale shiny</small></label>
