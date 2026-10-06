@@ -19,11 +19,12 @@ def symbols():
     return {p[2]: int(p[0], 16) for p in (l.split() for l in out.splitlines()) if len(p) == 3}
 
 
-def test_card_installs_and_game_keeps_running():
+@pytest.mark.parametrize("one_in", ["", "16", "1"])
+def test_card_installs_and_game_keeps_running(one_in):
     import mgba.core, mgba.log
     mgba.log.silence()
     sym = symbols()
-    made = json.loads(subprocess.run(["node", os.path.join(HERE, "make_payload.mjs"), ROM, "BPRE", "1"],
+    made = json.loads(subprocess.run(["node", os.path.join(HERE, "make_payload.mjs"), ROM, "BPRE", "1", one_in],
                                      capture_output=True, text=True, check=True).stdout)
     script = bytearray.fromhex(made["script"])
     script[5:7] = b"\x01\x01"             # `lock` y `faceplayer` necesitan un NPC; aquí no hay ninguno

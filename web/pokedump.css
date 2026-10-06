@@ -45,3 +45,5 @@ ul.plain { margin:.4em 0 0; padding-left:1.25em; } ul.plain li { margin:.3em 0; 
 .decision p { margin:.2em 0; }
 .choice small.tag { margin-left:6px; }
 [hidden] { display:none !important; }
+.odds { display:block; margin-top:8px; color:var(--text); }
+.odds select { display:block; margin-top:4px; max-width:100%; }

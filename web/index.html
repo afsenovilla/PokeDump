@@ -57,7 +57,14 @@
       <label class="choice"><input type="radio" name="mode" value="ram-dump">
         <div><b>Volcado completo</b><span>Equipo, cajas, Pokédex y entrenador, leídos de la RAM. Dura unos minutos.</span></div></label>
       <label class="choice" id="shiny-choice"><input type="radio" name="mode" value="shiny-hunting" disabled>
-        <div><b>Tarjeta Shiny Hunting <small class="tag">modifica el juego</small></b><span id="shiny-desc"></span></div></label>
+        <div><b>Tarjeta Shiny Hunting <small class="tag">modifica el juego</small></b><span id="shiny-desc"></span>
+          <div class="odds" id="odds-row" hidden>Probabilidad
+            <select id="shiny-odds">
+              <option value="">Original: 1/1024 que sube con la cadena hasta 1/64</option>
+              <option value="64">Fija 1/64</option><option value="32">Fija 1/32</option><option value="16">Fija 1/16</option>
+              <option value="8">Fija 1/8</option><option value="4">Fija 1/4</option><option value="2">Fija 1/2</option>
+              <option value="1">Siempre shiny (1/1)</option>
+            </select></div></div></label>
     </div>
     <div class="row"><button id="start">Empezar</button><button class="quiet" id="stop" hidden>Parar</button></div>
     <p class="status" id="dump-status" aria-live="polite"></p>
