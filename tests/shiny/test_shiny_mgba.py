@@ -449,9 +449,10 @@ def _settle(core, frames=6, gate=None):
         core.run_frame()
 
 
-def test_gift_shiny_party_and_boxes():
+@pytest.mark.parametrize("variant", ["gifts@1", "gifts@1+fossils"])
+def test_gift_shiny_party_and_boxes(variant):
     """Regalos: el Pokémon nuevo del equipo y el que va a la caja con el equipo lleno salen shiny; el primero (sin instantánea) y los salvajes ya existentes no se tocan."""
-    core, mem, sym = install_card("gifts@1")
+    core, mem, sym = install_card(variant)
     HOOK = 0x0203FC00
     at = lambda script_offset: HOOK + script_offset - 0x104
     mem.u32[at(0x384)] = mem.u32[sym["gMain"] + 4]                    # CB2_Overworld := callback2 actual (estamos en el título)
